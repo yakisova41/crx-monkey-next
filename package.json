@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "scripts": {
     "init": "bun install && bun install --cwd packages/crx-monkey",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "bun run --cwd packages/crx-monkey test",
     "build:crx": "bun run --cwd packages/crx-monkey build",
     "build:create-crx": "bun run --cwd packages/create-crx-monkey build",
     "build": "bun run build:crx && bun run build:create-crx",
@@ -24,5 +24,8 @@
     "prettier": "^3.6.2",
     "typescript": "^5.4.0",
     "typescript-eslint": "^7.4.0"
+  },
+  "devDependencies": {
+    "esbuild-plugin-d.ts": "^1.3.1"
   }
 }

@@ -6,6 +6,7 @@ import { ManifestParser } from '../manifest/ManifestParser';
 import { ManifestLoader } from '../manifest/ManifestLoader';
 import fse from 'fs-extra';
 import { geti18nMessages } from '../manifest/i18n';
+import { ConfigLoader } from '../ConfigLoader';
 
 @injectable()
 export class UserscriptRegisterer {
@@ -15,6 +16,7 @@ export class UserscriptRegisterer {
     private readonly headerFactory: UserscriptHeaderFactory,
     @inject(TYPES.ManifestParser) private readonly manifestParser: ManifestParser,
     @inject(TYPES.ManifestLoader) private readonly manifestLoader: ManifestLoader,
+    @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
   ) {}
 
   public async sync() {
@@ -28,14 +30,9 @@ export class UserscriptRegisterer {
     if (rawManifest.content_scripts !== undefined) {
       const { allMatches } = this.createMatchMap();
 
-      /**
-       * Set all match to header.
-       * If included all_urls in matches of manifest, do not have to.
-       */
       if (!allMatches.includes('<all_urls>')) {
-        allMatches.forEach((match) => {
-          userscriptHeaderFactory.push('@match', match);
-        });
+        userscriptHeaderFactory.push('@match', 'http://*/*');
+        userscriptHeaderFactory.push('@match', 'https://*/*');
       }
     }
 
@@ -112,6 +109,16 @@ export class UserscriptRegisterer {
       const base64 = this.convertImgToBase64(minIcon.path);
 
       userscriptHeaderFactory.push('@icon', base64);
+    }
+
+    /**
+     * Add aditional headers
+     */
+    const { header } = this.configLoader.useConfig();
+    if (header !== undefined) {
+      header.forEach(([key, value]) => {
+        userscriptHeaderFactory.push(key, value);
+      });
     }
   }
 

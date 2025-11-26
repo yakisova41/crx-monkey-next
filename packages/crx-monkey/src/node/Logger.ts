@@ -64,16 +64,9 @@ export class Logger {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public dispatchChrome(...detail: any) {
-    if (this.logLevel === 'debug') {
-      console.log(...[`[${this.getDateNowFormated()}] ${chalk.bgCyan(' USERJS ')}`, ...detail]);
-    }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public dispatchUserjs(...detail: any) {
-    if (this.logLevel === 'debug') {
-      console.log(...[`[${this.getDateNowFormated()}] ${chalk.bgCyan(' CHROME ')}`, ...detail]);
+  public dispatchConsole(...detail: any) {
+    if (this.logLevel === 'debug' || this.logLevel === 'error' || this.logLevel === 'info') {
+      console.log(...[`[${this.getDateNowFormated()}] ${chalk.bgYellow(' CONSOLE ')}`, ...detail]);
     }
   }
 

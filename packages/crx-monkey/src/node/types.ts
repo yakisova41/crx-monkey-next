@@ -1,3 +1,6 @@
+/**
+ * For inversify
+ */
 export const TYPES = {
   ConfigLoader: Symbol.for('I_ConfigLoader'),
   ManifestLoader: Symbol.for('I_ManifestLoader'),

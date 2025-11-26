@@ -6,7 +6,7 @@ import { CrxmBundler } from '../CrxmBundler';
 import { UserscriptHeaderFactory } from '../userscript/UserscriptHeader';
 import { userjs } from './codes/userjs';
 import { resolve } from 'path';
-import { hotreload, isolatedConnector } from './codes/extension';
+import { developmentContentScript, isolatedConnector } from './codes/extension';
 import fsExtra, { outputFileSync } from 'fs-extra/esm';
 import { ManifestFactory } from '../manifest/ManifestFactory';
 
@@ -55,14 +55,13 @@ export class CreateDevClient {
 
     const newFactory = new UserscriptHeaderFactory(this.headerFactory);
 
-    if (disableSock) {
-      newFactory.push('@grant', 'GM_xmlhttpRequest');
-    }
+    // for loading code from server in development mode.
+    newFactory.push('@grant', 'GM_xmlhttpRequest');
 
     const code = [
       newFactory.toString(),
       '',
-      stringifyFunction(userjs, [host, port, websocket, false, disableSock]),
+      stringifyFunction(userjs, [host, port, websocket, false, disableSock, this.buildId]),
     ].join('\n');
 
     return code;
@@ -84,9 +83,14 @@ export class CreateDevClient {
     const devScriptIsolatedFileName = 'crxm-development.js';
     const devScriptIsolatedPath = resolve(chrome, devScriptIsolatedFileName);
 
-    const devScriptIsolatedCode = stringifyFunction(hotreload, [host, websocket]);
+    const devScriptIsolatedCode = stringifyFunction(developmentContentScript, [
+      this.buildId,
+      host,
+      websocket,
+    ]);
 
     fsExtra.outputFileSync(devScriptIsolatedPath, devScriptIsolatedCode);
+
     this.manifestFactory.addContentScript(
       [devScriptIsolatedFileName],
       [],

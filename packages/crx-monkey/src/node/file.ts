@@ -1,5 +1,6 @@
 import path from 'path';
 import fse, { exists } from 'fs-extra';
+import crypto from 'crypto';
 
 /**
  * If user used windows, path scheme would be changed file:// and absolutable.
@@ -12,7 +13,7 @@ export function resolveFilePath(filePath: string) {
       const resolved = path.resolve(filePath);
       return 'file://' + resolved;
     } else {
-      const resolved = path.resolve(import.meta.dirname, filePath);
+      const resolved = path.resolve(__dirname, filePath);
       return 'file://' + resolved;
     }
   } else {
@@ -25,12 +26,12 @@ export function resolveFilePath(filePath: string) {
  * @param filePath
  * @returns A module.
  */
-export async function noCacheImport<T = unknown>(filePath: string) {
+export async function noCacheImport<T = unknown>(filePath: string, base: string = './') {
   if (!exists(filePath)) {
     throw new Error(`The module '${filePath}' does not exist`);
   }
   const data = fse.readFileSync(filePath, {});
-  const tmpFilePath = path.resolve('./', crypto.randomUUID());
+  const tmpFilePath = path.resolve(base, crypto.randomUUID());
   await fse.outputFile(tmpFilePath, data.toString());
 
   try {

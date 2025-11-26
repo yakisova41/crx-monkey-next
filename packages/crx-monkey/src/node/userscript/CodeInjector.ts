@@ -1,11 +1,11 @@
-import { CrxmContentScript } from 'src/client/typeDefs';
+import { CrxmContentScript } from 'src/node/typeDefs';
 import { convertFilePathToFuncName } from './UserscriptBundler';
 
 interface Content {
   funcNames: string[];
   // Inject scripts using trustedTypes when using DOM inject
   useTrustedScript: boolean;
-  useDomInject: boolean;
+  useDirectInject: boolean;
   matches: string[];
   run_at: 'document_start' | 'document_end' | 'document_idle';
 }
@@ -24,20 +24,26 @@ export class CodeInjector {
    * @param run_at
    */
   public addContent(contentScript: CrxmContentScript) {
-    const { run_at, matches, js, trusted_inject, userscript_direct_inject } = contentScript;
+    const { run_at, matches, js, css, trusted_inject, userscript_direct_inject } = contentScript;
 
     if (matches !== undefined) {
-      if (js !== undefined) {
-        const funcNames = js.map((filePath) => convertFilePathToFuncName(filePath));
+      const funcNames: string[] = [];
 
-        this.contents.push({
-          funcNames,
-          matches,
-          useDomInject: userscript_direct_inject !== undefined ? userscript_direct_inject : false,
-          useTrustedScript: trusted_inject !== undefined ? trusted_inject : true,
-          run_at: run_at === undefined ? 'document_idle' : run_at,
-        });
+      if (js !== undefined) {
+        funcNames.push(...js.map((filePath) => convertFilePathToFuncName(filePath)));
       }
+
+      if (css !== undefined) {
+        funcNames.push(...css.map((filePath) => convertFilePathToFuncName(filePath)));
+      }
+
+      this.contents.push({
+        funcNames,
+        matches,
+        useDirectInject: userscript_direct_inject !== undefined ? userscript_direct_inject : false,
+        useTrustedScript: trusted_inject !== undefined ? trusted_inject : true,
+        run_at: run_at === undefined ? 'document_idle' : run_at,
+      });
     }
   }
 
@@ -48,7 +54,7 @@ export class CodeInjector {
   public getCode() {
     let code = '';
 
-    this.contents.forEach(({ matches, useTrustedScript, funcNames, run_at, useDomInject }) => {
+    this.contents.forEach(({ matches, useTrustedScript, funcNames, run_at, useDirectInject }) => {
       const varHash = crypto.randomUUID().replaceAll('-', '_');
 
       const createScriptElementVarName = () => {
@@ -58,12 +64,19 @@ export class CodeInjector {
       // match if
       code +=
         '\n\nif(' +
-        matches.map((match) => `location.href.match('^${match}') !== null`).join(',') +
+        matches
+          .map((match) => {
+            if (match === '<all_urls>') {
+              return 'true';
+            }
+            return `location.href.match('^${match}') !== null`;
+          })
+          .join(',') +
         '){';
 
       let codeInner = '';
 
-      if (useDomInject) {
+      if (useDirectInject) {
         // Define idle scripts element
         const scriptElementVarName = createScriptElementVarName();
         codeInner += `\nconst ${scriptElementVarName} = document.createElement("script");`;
@@ -132,12 +145,18 @@ export class CodeInjector {
   private getCodeWrappedInjectTiming(code: string, runAt: 'document_idle' | 'document_end') {
     if (runAt === 'document_idle') {
       return (
-        "document.addEventListener('DOMContentLoaded', () => {setTimeout(() => {" +
+        '["DOMContentLoaded", "crxm_DOMContentLoaded"].forEach((eventType) => {' +
+        'document.addEventListener(eventType, () => {setTimeout(() => {' +
         code +
-        '\n}, 1)});\n'
+        '\n}, 1)})});\n'
       );
     } else if (runAt === 'document_end') {
-      return "document.addEventListener('DOMContentLoaded', () => {" + code + '\n});\n';
+      return (
+        '["DOMContentLoaded", "crxm_DOMContentLoaded"].forEach((eventType) => {' +
+        'document.addEventListener(eventType, () => {' +
+        code +
+        '\n})});\n'
+      );
     } else {
       return code;
     }

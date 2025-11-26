@@ -1,7 +1,31 @@
-import { SockServerResponse, SockServerResponseReload } from 'src/node/server/SockServer';
+import {
+  SockServerConsoleRecieved,
+  SockServerResponse,
+  SockServerResponseReload,
+} from 'src/node/server/SockServer';
 
-export function hotreload(host: string, websocketPort: number) {
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-constraint, @typescript-eslint/no-explicit-any
+export interface IsolatedConnectorEvent<T extends any = any> {
+  type: string;
+  crxContentBuildId: string;
+  detail: T;
+  actionId: string;
+}
+
+export function developmentContentScript(
+  crxContentBuildId: string,
+  host: string,
+  websocketPort: number,
+) {
   const websocket = new WebSocket(`ws://${host}:${websocketPort}`);
+
+  websocket.addEventListener('open', () => {
+    console.log('[crxm] A reload server connected..');
+  });
+
+  websocket.addEventListener('close', () => {
+    console.log('[crxm] A reload server disconnected..');
+  });
 
   websocket.addEventListener('message', ({ data }) => {
     const response = JSON.parse(data) as SockServerResponse<SockServerResponseReload>;
@@ -17,17 +41,61 @@ export function hotreload(host: string, websocketPort: number) {
       }
     }
   });
+
+  window.addEventListener('message', (e: MessageEvent<IsolatedConnectorEvent>) => {
+    const { data } = e;
+
+    /**
+     * Client can listen a result by using of this.
+     */
+    const handlers: Record<string, () => void> = {
+      'console-log': () => {
+        const preload: SockServerConsoleRecieved = {
+          type: 'console',
+          content: {
+            type: 'log',
+            contents: data.detail,
+          },
+        };
+        websocket.send(JSON.stringify(preload));
+      },
+      'console-error': () => {
+        const preload: SockServerConsoleRecieved = {
+          type: 'console',
+          content: {
+            type: 'error',
+            contents: data.detail,
+          },
+        };
+        websocket.send(JSON.stringify(preload));
+      },
+      'console-warn': () => {
+        const preload: SockServerConsoleRecieved = {
+          type: 'console',
+          content: {
+            type: 'warn',
+            contents: data.detail,
+          },
+        };
+        websocket.send(JSON.stringify(preload));
+      },
+    };
+
+    /**
+     * # BuildId Check
+     * If a build id of recieved message isn't equiavalent with a buildId of isolatedConnector,
+     * wouldn't be runned the handler so It can prevent being runned from other scripts.
+     */
+    if (data.crxContentBuildId === crxContentBuildId) {
+      const handler = handlers[data.type];
+      if (handler !== undefined) {
+        handler();
+      }
+    }
+  });
 }
 
 export function isolatedConnector(crxContentBuildId: string, config: string) {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-constraint, @typescript-eslint/no-explicit-any
-  interface IsolatedConnectorEvent<T extends any = any> {
-    type: string;
-    crxContentBuildId: string;
-    detail: T;
-    actionId: string;
-  }
-
   const messageListeners: Record<
     string,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

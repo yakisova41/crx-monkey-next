@@ -11,7 +11,7 @@ import {
   CrxmBundlerPluginWatcher,
   I_CrxmBundler,
   ScriptUpdateHandler,
-} from 'src/client/typeDefs';
+} from 'src/node/typeDefs';
 import chalk from 'chalk';
 import { Logger } from './Logger';
 
@@ -36,7 +36,7 @@ export class CrxmBundler implements I_CrxmBundler {
 
   public addTarget(
     entryPoint: string,
-    usingPlugin: { build: CrxmBundlerPlugin; watch: CrxmBundlerPluginWatch[] },
+    usingPlugin: { build: CrxmBundlerPlugin; watch: CrxmBundlerPluginWatch },
     flag: string = '',
   ) {
     const hash = crypto.randomUUID();
@@ -131,26 +131,24 @@ export class CrxmBundler implements I_CrxmBundler {
         const absolutePath = resolveFilePath(absolutePaths[hash]);
         const { usingPlugin } = this.targets[hash];
 
-        const resultSender = (result: Uint8Array) => {
-          this.logger.dispatchDebug(`✨ Builded ${chalk.gray('"' + absolutePath + '"')}`);
-
-          // Register result.
-          this._compileResults[hash] = result;
-
-          // Dispatch update
-          this.updateHandlers.forEach((h) => {
-            h(this.targets[hash]);
-          });
-        };
-
         if (await fse.exists(absolutePath)) {
-          watchers.push(
-            ...(await Promise.all(
-              usingPlugin.watch.map(async (plugin) => {
-                return await plugin(absolutePath, resultSender, this);
-              }),
-            )),
-          );
+          const { plugin, name } = usingPlugin.watch;
+
+          const resultSender = (result: Uint8Array) => {
+            this.logger.dispatchDebug(
+              `✨ [${name}] Builded  ${chalk.gray('"' + absolutePath + '"')}`,
+            );
+
+            // Register result.
+            this._compileResults[hash] = result;
+
+            // Dispatch update
+            this.updateHandlers.forEach((h) => {
+              h(this.targets[hash]);
+            });
+          };
+
+          this.watchers.push(await plugin(absolutePath, resultSender, this));
         } else {
           throw new Error(`Entrypoint '${absolutePath} does not exist.'`);
         }
@@ -166,7 +164,7 @@ export class CrxmBundler implements I_CrxmBundler {
 
     const absolutePath = resolveFilePath(absolutePaths[hash]);
 
-    this._compileResults[hash] = await target.usingPlugin.build(absolutePath, this);
+    this._compileResults[hash] = await target.usingPlugin.build.plugin(absolutePath, this);
     return target;
   }
 
@@ -184,7 +182,8 @@ export class CrxmBundler implements I_CrxmBundler {
         const { usingPlugin } = this.targets[hash];
 
         if (await fse.exists(absolutePath)) {
-          compileResults[hash] = await usingPlugin.build(absolutePath, this);
+          compileResults[hash] = await usingPlugin.build.plugin(absolutePath, this);
+          this.logger.dispatchDebug(`✨ [${usingPlugin.build.name}] Build successful!`);
         } else {
           throw new Error(`Entrypoint '${absolutePath} does not exist.'`);
         }

@@ -1,7 +1,8 @@
-import { promises } from 'fs';
 import { noCacheImport, resolveFilePath } from './file';
-import { CrxmConfigRequired } from 'src/client/typeDefs';
+import { CrxmConfigRequired } from 'src/node/typeDefs';
 import { injectable } from 'inversify';
+import { dirname } from 'path';
+import { promises } from 'fs';
 
 export interface I_ConfigLoader {
   loadConfig(): Promise<void>;
@@ -22,13 +23,9 @@ export class ConfigLoader implements I_ConfigLoader {
    * Load config from project
    */
   public async loadConfig() {
-    await this.searchConfig()
-      .then(async (confPath) => {
-        await this.loadConfigDetail(confPath);
-      })
-      .catch((e) => {
-        throw e;
-      });
+    const confPath = await this.searchConfig();
+
+    await this.loadConfigDetail(confPath);
   }
 
   /**
@@ -68,6 +65,7 @@ export class ConfigLoader implements I_ConfigLoader {
           resolve(dir + '/' + result);
         } else {
           const splited = dir.split('/');
+
           if (splited.length === 1) {
             reject(new Error('The config file not found. Please create "crxm.config.js"'));
           } else {
@@ -109,23 +107,21 @@ export class ConfigLoader implements I_ConfigLoader {
   private async loadConfigDetail(confPath: string) {
     const configAbsolutePath = resolveFilePath(confPath);
 
-    await noCacheImport<{ default: CrxmConfigRequired }>(configAbsolutePath)
-      .then((buildConfig) => {
-        const exportedConfig = buildConfig.default as CrxmConfigRequired;
+    const buildConfig = await noCacheImport<{ default: CrxmConfigRequired }>(
+      configAbsolutePath,
+      dirname(configAbsolutePath),
+    );
 
-        if (exportedConfig === undefined) {
-          throw new Error(`The config is not exported as default in "${configAbsolutePath}".`);
-        }
+    if (buildConfig.default === undefined) {
+      throw new Error(`The config is not exported as default in "${configAbsolutePath}".`);
+    }
 
-        if (exportedConfig === undefined) {
-          throw new Error(`The config is not exported as default in "${configAbsolutePath}".`);
-        }
+    const exportedConfig = buildConfig.default as CrxmConfigRequired;
 
-        this.loadedConfig = exportedConfig;
-        this.configPath = confPath;
-      })
-      .catch((e) => {
-        throw new Error(e);
-      });
+    if (exportedConfig === undefined) {
+      throw new Error(`The config is not exported as default in "${configAbsolutePath}".`);
+    }
+    this.loadedConfig = exportedConfig;
+    this.configPath = confPath;
   }
 }

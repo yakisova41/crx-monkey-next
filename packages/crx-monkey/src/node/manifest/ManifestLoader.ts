@@ -1,4 +1,4 @@
-import { CrxmManifestImportantKeyRequired } from 'src/client/typeDefs';
+import { CrxmManifestImportantKeyRequired } from 'src/node/typeDefs';
 import { noCacheImport, resolveFilePath } from '../file';
 import { resolve, dirname } from 'path';
 import { inject, injectable } from 'inversify';

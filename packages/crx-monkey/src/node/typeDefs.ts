@@ -61,7 +61,15 @@ export interface CrxmConfig {
   /**
    * A directory copied as it is to `/public` in dist.
    */
-  public: string | undefined;
+  public?: string | undefined;
+  /**
+   * Define variables to bundled script.
+   */
+  define?: {
+    sw?: Record<string, string>;
+    contentscripts?: Record<string, string>;
+    popup?: Record<string, string>;
+  };
 }
 
 type DeepRequired<T> = {
@@ -162,7 +170,7 @@ export type BuildTarget = {
   entryPoint: string;
   usingPlugin: {
     build: CrxmBundlerPlugin;
-    watch: CrxmBundlerPluginWatch[];
+    watch: CrxmBundlerPluginWatch;
   };
   flag: string;
 };
@@ -173,7 +181,7 @@ export interface I_CrxmBundler {
   compileResults: Record<string, Uint8Array>;
   addTarget(
     entryPoint: string,
-    usingPlugin: { build: CrxmBundlerPlugin; watch: CrxmBundlerPluginWatch[] },
+    usingPlugin: { build: CrxmBundlerPlugin; watch: CrxmBundlerPluginWatch },
     flag: string,
   ): string;
   removeTarget(targetEntryPoint: string): void;
@@ -190,15 +198,21 @@ export interface I_CrxmBundler {
 /**
  * Plugin for used when build.
  */
-export type CrxmBundlerPlugin = (filepath: string, bundler: I_CrxmBundler) => Promise<Uint8Array>;
+export type CrxmBundlerPlugin = {
+  name: string;
+  plugin: (filepath: string, bundler: I_CrxmBundler) => Promise<Uint8Array>;
+};
 /**
  * Plugin for used when watch.
  */
-export type CrxmBundlerPluginWatch = (
-  filepath: string,
-  sendResult: CrxmResultSender,
-  bundler: I_CrxmBundler,
-) => Promise<CrxmBundlerPluginWatcher>;
+export type CrxmBundlerPluginWatch = {
+  name: string;
+  plugin: (
+    filepath: string,
+    sendResult: CrxmResultSender,
+    bundler: I_CrxmBundler,
+  ) => Promise<CrxmBundlerPluginWatcher>;
+};
 
 export type CrxmBundlerPluginWatcher = {
   stop: () => Promise<void>;

@@ -3,7 +3,7 @@
     "target": "ES2022",
     "allowJs": false,
     "skipLibCheck": true,
-    "esModuleInterop": false,
+    "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
@@ -12,11 +12,10 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "baseUrl": ".",
-    "types": ["node", "chrome", "tampermonkey"],
+    "types": ["node", "chrome", "tampermonkey", "bun", "jest"],
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true
   },
-  "include": ["src/node/**/*"],
   "references": [
     {
       "path": "./tsconfig.client.json"

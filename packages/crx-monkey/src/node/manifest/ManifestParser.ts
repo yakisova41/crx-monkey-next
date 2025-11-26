@@ -1,7 +1,7 @@
 import { inject, injectable } from 'inversify';
-import { CrxmManifestImportantKeyRequired } from 'src/client/typeDefs';
+import { CrxmManifestImportantKeyRequired } from 'src/node/typeDefs';
 import { TYPES } from '../types';
-import { ConfigLoader } from '../ConfigLoader';
+import type { I_ConfigLoader } from '../ConfigLoader';
 import { dirname, resolve } from 'path';
 
 export interface I_ManifestParser {
@@ -13,7 +13,7 @@ export interface I_ManifestParser {
 export class ManifestParser implements I_ManifestParser {
   private _parseResult: null | ParseResult = null;
 
-  constructor(@inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader) {}
+  constructor(@inject(TYPES.ConfigLoader) private readonly configLoader: I_ConfigLoader) {}
 
   public get parseResult() {
     if (this._parseResult === null) {
@@ -99,18 +99,22 @@ export class ManifestParser implements I_ManifestParser {
     }
 
     manifest.content_scripts.forEach(({ js, css }) => {
-      contentResources.push(
-        ...js.map((p) => {
-          contentResourcesRaw.push(p);
-          return resolve(projectDir, p);
-        }),
-      );
-      cssResources.push(
-        ...css.map((p) => {
-          cssResourcesRaw.push(p);
-          return resolve(projectDir, p);
-        }),
-      );
+      if (js !== undefined) {
+        js.map((p) => {
+          if (!contentResourcesRaw.includes(p)) {
+            contentResourcesRaw.push(p);
+            contentResources.push(resolve(projectDir, p));
+          }
+        });
+      }
+      if (css !== undefined) {
+        css.map((p) => {
+          if (!cssResourcesRaw.includes(p)) {
+            cssResourcesRaw.push(p);
+            cssResources.push(resolve(projectDir, p));
+          }
+        });
+      }
     });
 
     return {

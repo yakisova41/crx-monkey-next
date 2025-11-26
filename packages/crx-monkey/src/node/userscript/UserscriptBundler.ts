@@ -11,7 +11,7 @@ import { ConfigLoader } from '../ConfigLoader';
 @injectable()
 export class UserscriptBundler {
   private codeWorkspace: string = '';
-  private codeBlocks: Record<string, BundlerCodeBlock> = {};
+  private codeBlocks: Record<string, UserJsCodeBlock | UserJsStyleBlock> = {};
 
   constructor(
     @inject(TYPES.ManifestFactory) private readonly manifestFactory: ManifestFactory,
@@ -31,8 +31,13 @@ export class UserscriptBundler {
    * @param codeBinaly
    */
   public addBuildResult(jsFilePath: string, codeBinaly: Uint8Array) {
-    const codeBlock = new BundlerCodeBlock(jsFilePath, codeBinaly);
+    const codeBlock = new UserJsCodeBlock(jsFilePath, codeBinaly);
     this.codeBlocks[jsFilePath] = codeBlock;
+  }
+
+  public addStyle(cssFilePath: string, code: Uint8Array) {
+    const codeBlock = new UserJsStyleBlock(cssFilePath, code);
+    this.codeBlocks[cssFilePath] = codeBlock;
   }
 
   public createCode() {
@@ -71,7 +76,7 @@ export class UserscriptBundler {
   }
 }
 
-class BundlerCodeBlock {
+class UserJsCodeBlock {
   private filePath: string;
   private content: Uint8Array;
 
@@ -86,6 +91,34 @@ class BundlerCodeBlock {
     const text = new TextDecoder().decode(this.content);
 
     result += `\n// ${this.filePath}\n function ${convertFilePathToFuncName(this.filePath)}() {\n${text}}\n`;
+
+    return result;
+  }
+
+  public getFunctionalizedFuncName() {
+    return convertFilePathToFuncName(this.filePath);
+  }
+}
+
+class UserJsStyleBlock {
+  private filePath: string;
+  private content: Uint8Array;
+
+  constructor(filePath: string, content: Uint8Array) {
+    this.filePath = filePath;
+    this.content = content;
+  }
+
+  public getFunctionalized() {
+    let result = '';
+
+    const text = new TextDecoder().decode(this.content);
+
+    result += `\n// ${this.filePath}\n function ${convertFilePathToFuncName(this.filePath)}() {
+const e = document.createElement("style");
+e.innerHTML = \`${text}\`;
+document.head.appendChild(e)
+console.log(e)}\n`;
 
     return result;
   }

@@ -8,6 +8,7 @@ import { CrxmBundler } from './CrxmBundler';
 import { dirname, resolve } from 'path';
 import chalk from 'chalk';
 import { Logger } from './Logger';
+import { Distributior } from './Distributior';
 
 export interface I_BundlerRegisterer {}
 
@@ -26,6 +27,7 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     @inject(TYPES.CrxmBundler) private readonly bundler: CrxmBundler,
     @inject(TYPES.Logger) private readonly logger: Logger,
     @inject(TYPES.IsWatch) private readonly isWatch: boolean,
+    @inject(TYPES.Distributior) private readonly distributior: Distributior,
   ) {}
 
   /**
@@ -59,7 +61,7 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
           continue;
         }
 
-        this.bundler.addTarget(path, { build: buildPlugin, watch: [watchPlugin] }, flag);
+        this.bundler.addTarget(path, { build: buildPlugin, watch: watchPlugin }, flag);
       }
     }
 
@@ -77,6 +79,33 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
       for (const path of paths) {
         this.bundler.removeTarget(path, flag);
       }
+    }
+
+    this.defineAllVars();
+  }
+
+  /**
+   * Load and register variables written in a conifg add to the bundled code
+   */
+  private defineAllVars() {
+    const { define } = this.configLoader.useConfig();
+
+    if (define.contentscripts !== undefined) {
+      Object.entries(define.contentscripts).forEach(([name, value]) => {
+        this.distributior.addDefine(name, value, 'content');
+      });
+    }
+
+    if (define.sw !== undefined) {
+      Object.entries(define.sw).forEach(([name, value]) => {
+        this.distributior.addDefine(name, value, 'sw');
+      });
+    }
+
+    if (define.popup !== undefined) {
+      Object.entries(define.popup).forEach(([name, value]) => {
+        this.distributior.addDefine(name, value, 'popup');
+      });
     }
   }
 

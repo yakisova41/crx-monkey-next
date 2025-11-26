@@ -14,6 +14,12 @@ import { CreateDevClient } from './development/CreateDevClient';
 
 @injectable()
 export class Distributior {
+  private defines: Defines = {
+    content: [],
+    sw: [],
+    popup: [],
+  };
+
   constructor(
     @inject(TYPES.CrxmBundler) private readonly bundler: CrxmBundler,
     @inject(TYPES.ManifestLoader) private readonly manifestLoader: ManifestLoader,
@@ -46,6 +52,34 @@ export class Distributior {
 
       await fsExtra.remove(dist);
     }
+  }
+
+  public initializeDefine() {
+    this.defines = {
+      content: [],
+      sw: [],
+      popup: [],
+    };
+  }
+
+  /**
+   * Variables to add to your code
+   * @param name
+   * @param value
+   * @param to
+   */
+  public addDefine(name: string, value: string, to: 'sw' | 'content' | 'popup') {
+    this.defines[to].push({ name, value });
+  }
+
+  private createDefineCode(defines: Define[]) {
+    return (
+      defines
+        .map(({ name, value }) => {
+          return `var ${name} = ${value};`;
+        })
+        .join('\n') + '\n'
+    );
   }
 
   /**
@@ -117,10 +151,13 @@ export class Distributior {
         const outputPath = resolve(distPath, fileName);
 
         const decoder = new TextDecoder();
-        let code: string | Uint8Array = result;
+
+        const decorded = decoder.decode(result);
+
+        let code: string | Uint8Array = this.createDefineCode(this.defines.content) + decorded;
 
         if (this.isWatch) {
-          code = `window.__CRX_CONTENT_BUILD_ID = '${this.buildId}';\n` + decoder.decode(result);
+          code = `window.__CRX_CONTENT_BUILD_ID = '${this.buildId}';\n` + code;
         }
 
         fsExtra.outputFileSync(outputPath, code);
@@ -139,13 +176,17 @@ export class Distributior {
       const outputPath = resolve(distPath, fileName);
 
       if (buildResult !== undefined) {
-        let result: string | Uint8Array = buildResult;
+        let code: string;
 
         if (this.isWatch) {
-          result = this.createDev.outputDevelomentSw(buildResult);
+          code =
+            this.createDefineCode(this.defines.sw) + this.createDev.outputDevelomentSw(buildResult);
+        } else {
+          const decoder = new TextDecoder();
+          code = this.createDefineCode(this.defines.sw) + decoder.decode(buildResult);
         }
 
-        fsExtra.outputFileSync(outputPath, result);
+        fsExtra.outputFileSync(outputPath, code);
         this.manifestFactory.resolve(raw.scriptResources.sw[i], fileName);
       }
     });
@@ -173,7 +214,10 @@ export class Distributior {
       const outputPath = resolve(distPath, fileName);
 
       if (result !== undefined) {
-        fsExtra.outputFileSync(outputPath, result);
+        const decoder = new TextDecoder();
+        const code = this.createDefineCode(this.defines.popup) + decoder.decode(result);
+
+        fsExtra.outputFileSync(outputPath, code);
         this.manifestFactory.resolve(raw.htmlResources.popup[i], fileName);
       }
     });
@@ -181,7 +225,7 @@ export class Distributior {
 
   private async userjsBundle(distPath: string) {
     const {
-      resources: { scriptResources, raw },
+      resources: { scriptResources, raw, cssResources },
     } = this.manifestParser.parseResult;
 
     scriptResources.content.forEach((path, i) => {
@@ -189,6 +233,14 @@ export class Distributior {
 
       if (result !== undefined) {
         this.userscriptBundler.addBuildResult(raw.scriptResources.content[i], result);
+      }
+    });
+
+    cssResources.forEach((path, i) => {
+      const result = this.bundler.getBuildResultFromPath(path);
+
+      if (result !== undefined) {
+        this.userscriptBundler.addStyle(raw.cssResources[i], result);
       }
     });
 
@@ -235,3 +287,9 @@ export class Distributior {
     }
   }
 }
+
+interface Define {
+  name: string;
+  value: string;
+}
+type Defines = Record<'content' | 'sw' | 'popup', Define[]>;

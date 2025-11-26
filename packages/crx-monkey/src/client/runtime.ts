@@ -1,5 +1,5 @@
 import { waitResultOnce } from './message';
-import { CrxmConfigRequired } from './typeDefs';
+import { CrxmConfigRequired } from '../node/typeDefs';
 
 export function getRunningRuntime() {
   if (typeof window.__CRX_CONTENT_BUILD_ID === 'undefined') {
@@ -11,7 +11,7 @@ export function getRunningRuntime() {
 
 export function getRunningWorld() {
   if (getRunningRuntime() === 'Userscript') {
-    throw new Error('Cannot be executed by user scripts');
+    throw new Error('Cannot be executed by userscripts');
   }
 
   if (typeof chrome.runtime.id === 'undefined') {
@@ -23,7 +23,7 @@ export function getRunningWorld() {
 
 export async function getCrxmConfig() {
   if (getRunningRuntime() === 'Userscript') {
-    throw new Error('Cannot be executed by user scripts');
+    throw new Error('Cannot be executed by userscripts');
   }
 
   const actionId = crypto.randomUUID();
@@ -47,7 +47,7 @@ export async function getCrxmConfig() {
  */
 export async function getExtensionId() {
   if (getRunningRuntime() === 'Userscript') {
-    throw new Error('Cannot be executed by user scripts');
+    throw new Error('Cannot be executed by userscripts');
   }
 
   if (getRunningWorld() === 'ISOLATED') {
@@ -67,4 +67,43 @@ export async function getExtensionId() {
     return await waitResultOnce<string>('get-id', actionId);
   }
 }
-export const runtime = { getRunningRuntime, getRunningWorld, getExtensionId, getCrxmConfig };
+
+/**
+ * You can check browser's console logs in your terminal at development mode.
+ * [ATTENSION] It's unstable future.
+ */
+export function attachConsole() {
+  const replaceOriginal = (original: (...args: string[]) => void, name: string) => {
+    return (...args: string[]) => {
+      original(...args);
+
+      const actionId = crypto.randomUUID();
+      window.postMessage(
+        {
+          type: name,
+          crxContentBuildId: window.__CRX_CONTENT_BUILD_ID,
+          detail: args.join(' '),
+          actionId,
+        },
+        '*',
+      );
+    };
+  };
+
+  const l = console.log;
+  const w = console.warn;
+  const e = console.error;
+
+  window.console.log = replaceOriginal(l, 'console-log');
+  window.console.warn = replaceOriginal(w, 'console-warn');
+  window.console.error = replaceOriginal(e, 'console-error');
+  console.log("[crxm] browser's console attached to your console.");
+}
+
+export const runtime = {
+  getRunningRuntime,
+  getRunningWorld,
+  getExtensionId,
+  getCrxmConfig,
+  attachConsole,
+};

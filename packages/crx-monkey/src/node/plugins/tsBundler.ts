@@ -1,5 +1,5 @@
 import esbuild, { BuildOptions, Plugin, PluginBuild } from 'esbuild';
-import { CrxmBundlerPlugin, CrxmBundlerPluginWatch, CrxmResultSender } from '../../client/typeDefs';
+import { CrxmBundlerPlugin, CrxmBundlerPluginWatch, CrxmResultSender } from '../typeDefs';
 import typescript, {
   CompilerOptions,
   parseJsonConfigFileContent,
@@ -95,36 +95,34 @@ export function tsBundler(options: TsBundlerOptions = { esbuild: {} }): CrxmBund
     }
   }
 
-  return async (filePath: string) => {
-    return await esbuild
-      .build({
-        ...(options.esbuild !== undefined ? options.esbuild : {}),
-        entryPoints: [filePath],
-        treeShaking: true,
-        bundle: true,
-        metafile: true,
-        write: false,
-        format: 'iife',
-        target: 'esnext',
-        define: {
-          'process.env.NODE_ENV': '"production"', // 必要に応じて
-          'process.browser': 'true', // 💡 このフラグを強制的にtrueにする
-          global: 'window', // 💡 globalもwindowに置き換える
-        },
-        platform: 'browser',
-        logLevel: 'error',
-        tsconfig: options.tsconfig,
-        external: ['esbuild', 'esbuild/*', 'fs-extra', 'fs-extra/*', 'fs', 'path', 'crypto'],
+  return {
+    name: 'Crxm Typescript Plugin',
+    plugin: async (filePath: string) => {
+      return await esbuild
+        .build({
+          ...(options.esbuild !== undefined ? options.esbuild : {}),
+          entryPoints: [filePath],
+          treeShaking: true,
+          bundle: true,
+          metafile: true,
+          write: false,
+          format: 'iife',
+          target: 'esnext',
+          platform: 'browser',
+          logLevel: 'error',
+          tsconfig: options.tsconfig,
+          external: ['esbuild', 'esbuild/*', 'fs-extra', 'fs-extra/*', 'fs', 'path', 'crypto'],
 
-        plugins: [
-          ...(options.esbuild?.plugins !== undefined ? options.esbuild.plugins : []),
-          ...(options.typeCheck ? [esbuildTypecheckPlugin(tsPluginOptions)] : []),
-        ],
-      })
-      .then((result) => {
-        const outputFile = result.outputFiles[0];
-        return outputFile.contents;
-      });
+          plugins: [
+            ...(options.esbuild?.plugins !== undefined ? options.esbuild.plugins : []),
+            ...(options.typeCheck ? [esbuildTypecheckPlugin(tsPluginOptions)] : []),
+          ],
+        })
+        .then((result) => {
+          const outputFile = result.outputFiles[0];
+          return outputFile.contents;
+        });
+    },
   };
 }
 
@@ -136,62 +134,64 @@ export function tsBundler(options: TsBundlerOptions = { esbuild: {} }): CrxmBund
 export function tsBundlerWatch(
   options: TsBundlerOptions = { esbuild: {} },
 ): CrxmBundlerPluginWatch {
-  return async (filePath: string, sendResult: CrxmResultSender) => {
-    const watchPlugin: Plugin = {
-      name: 'send-esbuild-build-result-to-crxm-plugin',
-      setup: (build: PluginBuild) => {
-        build.onEnd((result) => {
-          if (result.outputFiles !== undefined) {
-            const outputFile = result.outputFiles[0].contents;
-            sendResult(outputFile);
-          }
-        });
-      },
-    };
+  return {
+    name: 'Crxm Watch Typescript Plugin',
+    plugin: async (filePath: string, sendResult: CrxmResultSender) => {
+      const watchPlugin: Plugin = {
+        name: 'send-esbuild-build-result-to-crxm-plugin',
+        setup: (build: PluginBuild) => {
+          build.onEnd((result) => {
+            if (result.outputFiles !== undefined) {
+              const outputFile = result.outputFiles[0].contents;
+              sendResult(outputFile);
+            }
+          });
+        },
+      };
 
-    const tsPluginOptions: EsbuildTypecheckPluginArgs = {
-      compilerOptions: {
-        target: 99,
-      },
-      exit: false,
-    };
+      const tsPluginOptions: EsbuildTypecheckPluginArgs = {
+        compilerOptions: {
+          target: 99,
+        },
+        exit: false,
+      };
 
-    if (options.tsconfig !== undefined) {
-      const tsconfig = readConfigFile(options.tsconfig, sys.readFile);
-      const parsedOptions = parseJsonConfigFileContent(tsconfig.config, sys, './');
+      if (options.tsconfig !== undefined) {
+        const tsconfig = readConfigFile(options.tsconfig, sys.readFile);
+        const parsedOptions = parseJsonConfigFileContent(tsconfig.config, sys, './');
 
-      if (tsconfig.config !== undefined) {
-        tsPluginOptions.compilerOptions = parsedOptions.options;
+        if (tsconfig.config !== undefined) {
+          tsPluginOptions.compilerOptions = parsedOptions.options;
+        }
       }
-    }
 
-    const ctx = await esbuild.context({
-      ...(options.esbuild !== undefined ? options.esbuild : {}),
-      entryPoints: [filePath],
-      format: 'iife',
-      treeShaking: true,
-      bundle: true,
-      metafile: true,
-      write: false,
-      target: 'esnext',
-      platform: 'browser',
-      external: ['esbuild', 'esbuild/*', 'fs-extra', 'fs-extra/*', 'fs', 'path', 'crypto'],
-      logLevel: 'error',
-      tsconfig: options.tsconfig,
-      plugins: [
-        ...(options.esbuild?.plugins !== undefined ? options.esbuild.plugins : []),
-        ...(options.typeCheck ? [esbuildTypecheckPlugin(tsPluginOptions)] : []),
-        watchPlugin,
-      ],
-    });
+      const ctx = await esbuild.context({
+        ...(options.esbuild !== undefined ? options.esbuild : {}),
+        entryPoints: [filePath],
+        format: 'iife',
+        treeShaking: true,
+        bundle: true,
+        metafile: true,
+        write: false,
+        target: 'esnext',
+        platform: 'browser',
+        logLevel: 'error',
+        tsconfig: options.tsconfig,
+        plugins: [
+          ...(options.esbuild?.plugins !== undefined ? options.esbuild.plugins : []),
+          ...(options.typeCheck ? [esbuildTypecheckPlugin(tsPluginOptions)] : []),
+          watchPlugin,
+        ],
+      });
 
-    await ctx.watch();
+      await ctx.watch();
 
-    return {
-      stop: async () => {
-        await ctx.dispose();
-        // console.log(`${filePath} watching stoped`);
-      },
-    };
+      return {
+        stop: async () => {
+          await ctx.dispose();
+          // console.log(`${filePath} watching stoped`);
+        },
+      };
+    },
   };
 }

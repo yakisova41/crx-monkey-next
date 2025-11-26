@@ -2,7 +2,7 @@ import { parse, HTMLElement } from 'node-html-parser';
 import fse from 'fs-extra';
 import { basename, dirname, resolve } from 'path';
 import { watch, FSWatcher } from 'fs';
-import { CrxmBundlerPlugin, CrxmBundlerPluginWatch, I_CrxmBundler } from '../../../client/typeDefs';
+import { CrxmBundlerPlugin, CrxmBundlerPluginWatch, I_CrxmBundler } from '../../typeDefs';
 
 export class HTMLTools {
   private htmlParserRoot: HTMLElement;
@@ -158,7 +158,7 @@ export class HTMLTools {
 
           const hash = this.bundler.addTarget(
             path,
-            { build: buildPlugin, watch: [watchPlugin] },
+            { build: buildPlugin, watch: watchPlugin },
             type,
           );
           hashs.push(hash);

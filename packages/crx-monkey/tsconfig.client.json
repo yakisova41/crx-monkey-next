@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "composite": true,
     "target": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "types": ["chrome", "tampermonkey"],
@@ -13,8 +12,9 @@
     "module": "ESNext",
     "moduleResolution": "Node",
     "resolveJsonModule": true,
+    "composite": true,
     "isolatedModules": true,
-    "jsx": "react-jsx"
+    "outDir": "./dist/client"
   },
-  "include": ["./src/client/**/*", "./src/node/plugins"]
+  "include": ["./src/client/**/*", "./src/node/typeDefs.ts"]
 }

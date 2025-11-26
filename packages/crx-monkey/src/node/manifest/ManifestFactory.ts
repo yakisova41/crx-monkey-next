@@ -1,6 +1,6 @@
 import { inject, injectable } from 'inversify';
 import { getMessage } from './i18n';
-import type { CrxmManifestImportantKeys } from 'src/client/typeDefs';
+import type { CrxmManifestImportantKeys } from 'src/node/typeDefs';
 import { TYPES } from '../types';
 import { ManifestLoader } from './ManifestLoader';
 
@@ -11,7 +11,11 @@ import { ManifestLoader } from './ManifestLoader';
 export class ManifestFactory {
   public rawManifest: CrxmManifestImportantKeys;
   private workspace: CrxmManifestImportantKeys;
-  private definedCustomKeysByCrxMonkeyInContentScrpt: string[] = ['use_isolated_connection'];
+  private definedCustomKeysByCrxMonkeyInContentScrpt: string[] = [
+    'use_isolated_connection',
+    'userscript_direct_inject',
+    'trusted_inject',
+  ];
 
   constructor(@inject(TYPES.ManifestLoader) private readonly manifestLoader: ManifestLoader) {
     this.rawManifest = this.manifestLoader.useManifest();

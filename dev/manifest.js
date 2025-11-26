@@ -1,4 +1,5 @@
-import { defineManifest } from '../packages/crx-monkey/dist/client/main.js';
+// @ts-check
+import { defineManifest } from '../packages/crx-monkey/dist/node/exports.js';
 
 export default defineManifest({
   manifest_version: 3,
@@ -7,10 +8,10 @@ export default defineManifest({
   content_scripts: [
     {
       js: ['content_scripts/main.ts'],
-      css: ['content_scripts/style.css'],
-      matches: ['https://x.com/*'],
+      css: ['content_scripts/style.scss'],
+      matches: ['<all_urls>'],
+      userscript_direct_inject: false,
       use_isolated_connection: true,
-      userscript_direct_inject: true,
     },
   ],
   background: {

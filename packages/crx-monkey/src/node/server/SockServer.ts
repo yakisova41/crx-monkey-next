@@ -11,7 +11,8 @@ import chalk from 'chalk';
 @injectable()
 export class SockServer {
   private readonly wserver: WebSocketServer;
-  private listeners: SockServerLisntener[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private listeners: SockServerLisntener<any>[] = [];
 
   /**
    * Start and setup server.
@@ -34,7 +35,8 @@ export class SockServer {
     //this.setup();
   }
 
-  public addMsgListener(listener: SockServerLisntener) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unnecessary-type-constraint
+  public addMsgListener<T extends SockRecieveContent>(listener: SockServerLisntener<T>) {
     this.listeners.push(listener);
   }
 
@@ -45,7 +47,7 @@ export class SockServer {
   }
 
   public setup() {
-    this.wserver.on('connection', (socket) => {
+    this.wserver.addListener('connection', (socket) => {
       this.sendMsg<SockServerResponseConnected>(socket, {
         type: 'connected',
         content: null,
@@ -57,6 +59,11 @@ export class SockServer {
           const data: SockRecieve<any> = JSON.parse(e.data);
           this.dispatch(data);
         }
+
+        this.sendMsg<SockServerResponseContent>(socket, {
+          type: 'send_ok',
+          content: null,
+        });
       });
     });
   }
@@ -124,7 +131,7 @@ export interface SockServerConsoleRecieved extends SockRecieveContent {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SockServerLisntener = <T extends SockRecieveContent>(msg: SockRecieve<T>) => any;
+type SockServerLisntener<T extends SockRecieveContent> = (msg: SockRecieve<T>) => any;
 export interface SockRecieve<T extends SockRecieveContent> {
   type: T['type'];
   content: T['content'];

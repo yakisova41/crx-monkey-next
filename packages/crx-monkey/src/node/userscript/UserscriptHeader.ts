@@ -1,5 +1,5 @@
 import { injectable } from 'inversify';
-import { UserScriptHeader, UserScriptHeaderProps } from 'src/client/typeDefs';
+import { UserScriptHeader, UserScriptHeaderProps } from 'src/node/typeDefs';
 
 @injectable()
 export class UserscriptHeaderFactory {
