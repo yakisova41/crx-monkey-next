@@ -1,5 +1,5 @@
 {
-  "name": "crx-monkey",
+  "name": "crx-monkey-next",
   "type": "module",
   "version": "0.0.1",
   "description": "",
@@ -31,7 +31,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yakisova41/crx-monkey.git",
+    "url": "https://github.com/yakisova41/crx-monkey-next.git",
     "directory": "packages/crx-monkey"
   },
   "devDependencies": {
