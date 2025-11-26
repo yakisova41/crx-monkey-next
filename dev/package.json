@@ -10,7 +10,5 @@
     "build": "node ../packages/crx-monkey/bin/crx-monkey build"
   },
   "type": "module",
-  "dependencies": {
-    "zod": "^4.1.12"
-  }
+  "dependencies": {}
 }
