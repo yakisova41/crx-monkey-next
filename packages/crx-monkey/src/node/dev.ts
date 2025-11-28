@@ -70,7 +70,6 @@ export async function dev() {
   await userscriptRegisterer.sync();
 
   createDevClient.outputDevExtension();
-  createDevClient.outputIsolatedConnector();
 
   // Bundle
   await bundler.watch();
@@ -93,7 +92,6 @@ export async function dev() {
     await userscriptRegisterer.sync();
 
     createDevClient.outputDevExtension();
-    createDevClient.outputIsolatedConnector();
 
     // Bundle
     await bundler.stopWatch();

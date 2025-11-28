@@ -6,8 +6,8 @@ import { CrxmBundler } from '../CrxmBundler';
 import { UserscriptHeaderFactory } from '../userscript/UserscriptHeader';
 import { userjs } from './codes/userjs';
 import { resolve } from 'path';
-import { developmentContentScript, isolatedConnector } from './codes/extension';
-import fsExtra, { outputFileSync } from 'fs-extra/esm';
+import { developmentContentScript } from './codes/extension';
+import fsExtra from 'fs-extra/esm';
 import { ManifestFactory } from '../manifest/ManifestFactory';
 
 @injectable()
@@ -97,48 +97,6 @@ export class CreateDevClient {
       ['<all_urls>'],
       'ISOLATED',
     );
-  }
-
-  /**
-   * Include isolated connector
-   */
-  public outputIsolatedConnector() {
-    const {
-      output: { chrome },
-      server: { host, websocket },
-    } = this.configLoader.useConfig();
-
-    if (chrome === undefined || host === undefined || websocket === undefined) {
-      throw new Error('');
-    }
-
-    let includeConnector = false;
-    const isolatedmatches: string[] = [];
-
-    this.manifestFactory.rawManifest.content_scripts.forEach(
-      ({ use_isolated_connection, matches }) => {
-        if (use_isolated_connection) {
-          isolatedmatches.push(...(matches !== undefined ? matches : []));
-          includeConnector = true;
-        }
-      },
-    );
-
-    if (includeConnector) {
-      const isoFileName = 'crxm-isolated-connector.js';
-      const isoConnectorPath = resolve(chrome, isoFileName);
-      outputFileSync(
-        isoConnectorPath,
-        `${stringifyFunction(isolatedConnector, [this.buildId, JSON.stringify(this.configLoader.useConfig())])}\n`,
-      );
-      this.manifestFactory.addContentScript(
-        [isoFileName],
-        [],
-        [...isolatedmatches],
-        'ISOLATED',
-        'document_start',
-      );
-    }
   }
 }
 
