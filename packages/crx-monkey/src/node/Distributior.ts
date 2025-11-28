@@ -10,7 +10,8 @@ import MurmurHash3 from 'murmurhash3js';
 import fsExtra from 'fs-extra';
 import { UserscriptBundler } from './userscript/UserscriptBundler';
 import prettier from 'prettier';
-import { CreateDevClient } from './development/CreateDevClient';
+import { CreateDevClient, stringifyFunction } from './development/CreateDevClient';
+import { isolatedConnector } from './isolatedConnector';
 
 @injectable()
 export class Distributior {
@@ -93,6 +94,7 @@ export class Distributior {
       this.copyPublicDir(output.chrome);
       this.copyIcons(output.chrome);
       this.outputManifest(output.chrome);
+      this.outputIsolatedConnector();
     }
 
     if (output.userjs !== undefined) {
@@ -221,6 +223,48 @@ export class Distributior {
         this.manifestFactory.resolve(raw.htmlResources.popup[i], fileName);
       }
     });
+  }
+
+  /**
+   * Include isolated connector
+   */
+  private outputIsolatedConnector() {
+    const {
+      output: { chrome },
+      server: { host, websocket },
+    } = this.configLoader.useConfig();
+
+    if (chrome === undefined || host === undefined || websocket === undefined) {
+      throw new Error('');
+    }
+
+    let includeConnector = false;
+    const isolatedmatches: string[] = [];
+
+    this.manifestFactory.rawManifest.content_scripts.forEach(
+      ({ use_isolated_connection, matches }) => {
+        if (use_isolated_connection) {
+          isolatedmatches.push(...(matches !== undefined ? matches : []));
+          includeConnector = true;
+        }
+      },
+    );
+
+    if (includeConnector) {
+      const isoFileName = 'crxm-isolated-connector.js';
+      const isoConnectorPath = resolve(chrome, isoFileName);
+      fsExtra.outputFileSync(
+        isoConnectorPath,
+        `${stringifyFunction(isolatedConnector, [this.buildId, JSON.stringify(this.configLoader.useConfig())])}\n`,
+      );
+      this.manifestFactory.addContentScript(
+        [isoFileName],
+        [],
+        [...isolatedmatches],
+        'ISOLATED',
+        'document_start',
+      );
+    }
   }
 
   private async userjsBundle(distPath: string) {
