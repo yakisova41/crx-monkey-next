@@ -41,6 +41,7 @@ export class CrxmBundler implements I_CrxmBundler {
   ) {
     const hash = crypto.randomUUID();
     this.targets[hash] = { entryPoint, usingPlugin, hash, flag };
+
     return hash;
   }
 
@@ -86,6 +87,8 @@ export class CrxmBundler implements I_CrxmBundler {
       throw new Error('Script watching must be started after stopping before watching');
     }
     await this.watchAll();
+
+    this.logger.dispatchDebugStack('Watch started');
   }
 
   /**
@@ -99,6 +102,8 @@ export class CrxmBundler implements I_CrxmBundler {
     );
 
     this.watchers = [];
+
+    this.logger.dispatchDebugStack('Watch stopped');
   }
 
   /**
@@ -123,39 +128,50 @@ export class CrxmBundler implements I_CrxmBundler {
    * Start watching for all sources by using plugins.
    */
   private async watchAll() {
-    const watchers: CrxmBundlerPluginWatcher[] = [];
     const absolutePaths = await this.getTargetAbsolutePaths();
 
-    await Promise.all(
-      Object.keys(absolutePaths).map(async (hash) => {
-        const absolutePath = resolveFilePath(absolutePaths[hash]);
-        const { usingPlugin } = this.targets[hash];
+    this.logger.dispatchDebug('Files:', absolutePaths);
 
-        if (await fse.exists(absolutePath)) {
-          const { plugin, name } = usingPlugin.watch;
+    const hashs = Object.keys(absolutePaths);
+    for (let i = 0; i < hashs.length; i++) {
+      const hash = hashs[i];
 
-          const resultSender = (result: Uint8Array) => {
-            this.logger.dispatchDebug(
-              `✨ [${name}] Builded  ${chalk.gray('"' + absolutePath + '"')}`,
-            );
+      this.logger.dispatchDebug(absolutePaths[hash]);
 
-            // Register result.
-            this._compileResults[hash] = result;
+      await this.watchFile(hash);
+    }
+  }
 
-            // Dispatch update
-            this.updateHandlers.forEach((h) => {
-              h(this.targets[hash]);
-            });
-          };
+  private async watchFile(hash: string) {
+    const absolutePaths = await this.getTargetAbsolutePaths();
 
-          this.watchers.push(await plugin(absolutePath, resultSender, this));
-        } else {
-          throw new Error(`Entrypoint '${absolutePath} does not exist.'`);
-        }
-      }),
-    );
+    const absolutePath = resolveFilePath(absolutePaths[hash]);
+    const { usingPlugin } = this.targets[hash];
 
-    this.watchers = watchers;
+    if (await fse.exists(absolutePath)) {
+      const { plugin, name } = usingPlugin.watch;
+
+      const resultSender = (result: Uint8Array) => {
+        this.logger.dispatchDebug(`✨ [${name}] Builded  ${chalk.gray('"' + absolutePath + '"')}`);
+
+        // Register result.
+        this._compileResults[hash] = result;
+
+        // Dispatch update
+        this.updateHandlers.forEach((handler) => {
+          handler(this.targets[hash]);
+        });
+      };
+
+      const watcher = await plugin(absolutePath, resultSender, this);
+      this.watchers.push(watcher);
+
+      this.logger.dispatchDebugStack(
+        `🩹 [${name}] Registered plugin for  ${chalk.gray('"' + absolutePath + '"')}`,
+      );
+    } else {
+      throw new Error(`Entrypoint '${absolutePath} does not exist.'`);
+    }
   }
 
   public async compileForce(hash: string) {

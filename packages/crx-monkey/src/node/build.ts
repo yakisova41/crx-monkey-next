@@ -54,7 +54,7 @@ export async function build() {
     // Bundle
     await bundler.build();
     // Output bundled file to dist
-    distributior.dist();
+    await distributior.distAll();
 
     logger.dispatchLog(`Build successful!`);
   } catch (e) {

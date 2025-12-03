@@ -53,6 +53,7 @@ export class Logger {
   public dispatchErr(...detail: any) {
     if (this.logLevel === 'debug' || this.logLevel === 'error') {
       console.log(...[`[${this.getDateNowFormated()}] ${chalk.bgRed(' ERROR ')}`, ...detail]);
+      console.log(this.getStack());
     }
   }
 
@@ -60,6 +61,14 @@ export class Logger {
   public dispatchDebug(...detail: any) {
     if (this.logLevel === 'debug') {
       console.log(...[`[${this.getDateNowFormated()}] ${chalk.bgCyan(' DEBUG ')}`, ...detail]);
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public dispatchDebugStack(...detail: any) {
+    if (this.logLevel === 'debug') {
+      console.log(...[`[${this.getDateNowFormated()}] ${chalk.bgCyan(' DEBUG ')}`, ...detail]);
+      console.log(this.getStack());
     }
   }
 
@@ -73,5 +82,20 @@ export class Logger {
   private getDateNowFormated() {
     const formattedDate = moment().format('YYYY/MM/DD HH:mm:ss');
     return formattedDate;
+  }
+
+  private getStack() {
+    const error = new Error();
+    const stack = error.stack?.split('\n');
+
+    if (stack !== undefined) {
+      const str = stack
+        .slice(3)
+        .map((x) => chalk.gray(x))
+        .join('\n');
+      return str;
+    } else {
+      return 'Could not get stack trace.';
+    }
   }
 }
