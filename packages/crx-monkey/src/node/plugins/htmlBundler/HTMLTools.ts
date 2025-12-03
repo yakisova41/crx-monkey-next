@@ -40,6 +40,7 @@ export class HTMLTools {
   public async watchHTML() {
     const stack: (() => Promise<void>)[] = [];
 
+    // When html updated
     const onUpdate = async () => {
       this.htmlParserRoot = this.getParser(this.popupPath);
       const result = this.parse();

@@ -12,6 +12,8 @@ import { UserscriptBundler } from './userscript/UserscriptBundler';
 import prettier from 'prettier';
 import { CreateDevClient, stringifyFunction } from './development/CreateDevClient';
 import { isolatedConnector } from './isolatedConnector';
+import { Logger } from './Logger';
+import chalk from 'chalk';
 
 @injectable()
 export class Distributior {
@@ -29,6 +31,7 @@ export class Distributior {
     @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
     @inject(TYPES.UserscriptBundler) private readonly userscriptBundler: UserscriptBundler,
     @inject(TYPES.CreateDevClient) private readonly createDev: CreateDevClient,
+    @inject(TYPES.Logger) private readonly logger: Logger,
     @inject(TYPES.IsWatch) private readonly isWatch: boolean,
     @inject(TYPES.BuildID) private readonly buildId: string,
   ) {}
@@ -37,9 +40,97 @@ export class Distributior {
    * Output bundled file
    * This must be used after bundled.
    */
-  public dist() {
-    this.outputBundled();
-    //this.copyAssetsDir();
+  public async distAll() {
+    const { output } = this.configLoader.useConfig();
+    const {
+      resources: { scriptResources, raw, htmlResources },
+    } = this.manifestParser.parseResult;
+
+    if (output.chrome !== undefined) {
+      if (output.chrome !== undefined) {
+        await this.outputAllChromeContentscripts(output.chrome);
+        await this.outputAllChromeCss(output.chrome);
+        if (scriptResources.sw.length !== 0) {
+          await this.outputChromeSw(
+            scriptResources.sw[0],
+            raw.scriptResources.sw[0],
+            output.chrome,
+          );
+        }
+        if (htmlResources.popup.length !== 0) {
+          await this.outputPopup(htmlResources.popup[0], raw.htmlResources.popup[0], output.chrome);
+        }
+      }
+
+      await this.copyPublicDir(output.chrome);
+      await this.copyIcons(output.chrome);
+      await this.outputManifest(output.chrome);
+      await this.outputIsolatedConnector();
+    }
+
+    if (output.userjs !== undefined) {
+      await this.userjsBundle(output.userjs);
+    }
+  }
+
+  public async dist(
+    targetSourceAbsolutePath: string,
+    type: 'content' | 'sw' | 'popup' | 'css' | 'userjs',
+  ) {
+    const { output } = this.configLoader.useConfig();
+    const {
+      resources: { scriptResources, raw, cssResources },
+    } = this.manifestParser.parseResult;
+
+    if (type === 'content') {
+      await Promise.all(
+        scriptResources.content.map(async (absolutePath, i) => {
+          if (output.chrome !== undefined) {
+            const pathInManifest = raw.scriptResources.content[i];
+
+            await this.outputChromeContentScript(absolutePath, pathInManifest, output.chrome);
+          }
+        }),
+      );
+    }
+
+    if (type === 'sw') {
+      if (output.chrome !== undefined) {
+        await this.outputChromeSw(
+          targetSourceAbsolutePath,
+          raw.scriptResources.sw[0],
+          output.chrome,
+        );
+      }
+    }
+
+    if (type === 'popup') {
+      if (output.chrome !== undefined) {
+        await this.outputPopup(targetSourceAbsolutePath, raw.htmlResources.popup[0], output.chrome);
+      }
+    }
+
+    if (type === 'css') {
+      await Promise.all(
+        cssResources.map(async (absolutePath, i) => {
+          if (output.chrome !== undefined) {
+            const pathInManifest = raw.cssResources[i];
+
+            this.outputChromeCss(absolutePath, pathInManifest, output.chrome);
+          }
+        }),
+      );
+    }
+
+    if (output.chrome !== undefined) {
+      await this.outputManifest(output.chrome);
+    }
+
+    if (type === 'userjs') {
+      if (output.userjs !== undefined) {
+        await this.userjsBundle(output.userjs);
+      }
+    }
   }
 
   /**
@@ -84,25 +175,6 @@ export class Distributior {
   }
 
   /**
-   * Output bundled file
-   */
-  private outputBundled() {
-    const { output } = this.configLoader.useConfig();
-
-    if (output.chrome !== undefined) {
-      this.chromeBundle(output.chrome);
-      this.copyPublicDir(output.chrome);
-      this.copyIcons(output.chrome);
-      this.outputManifest(output.chrome);
-      this.outputIsolatedConnector();
-    }
-
-    if (output.userjs !== undefined) {
-      this.userjsBundle(output.userjs);
-    }
-  }
-
-  /**
    * Convert a file extension that is .ts to .js.
    * @param filePath
    * @returns A filePath that extension converted to .js.
@@ -119,116 +191,155 @@ export class Distributior {
    * This operation must be used after all transpiling.
    * @param outputPath
    */
-  private outputManifest(outputPath: string) {
+  private async outputManifest(outputPath: string) {
     const manifest = this.manifestFactory.getWorkspace();
-    fsExtra.outputFileSync(
+    await fsExtra.outputFile(
       resolve(outputPath, 'manifest.json'),
       JSON.stringify(manifest, undefined, 2),
     );
   }
 
-  /**
-   * Output for chrome
-   * @param distPath
-   */
-  private chromeBundle(distPath: string) {
+  private async outputAllChromeContentscripts(distPath: string) {
     const {
-      resources: {
-        scriptResources,
-        cssResources,
-        htmlResources: { popup },
-        raw,
-      },
+      resources: { scriptResources, raw },
     } = this.manifestParser.parseResult;
 
-    scriptResources.content.forEach((path, i) => {
-      const result = this.bundler.getBuildResultFromPath(path);
+    await Promise.all(
+      scriptResources.content.map(async (path, i) => {
+        await this.outputChromeContentScript(path, raw.scriptResources.content[i], distPath);
+      }),
+    );
+  }
 
-      if (result !== undefined) {
-        const extChanged = this.changeExt(path, 'js');
-        const endemicHash = MurmurHash3.x86.hash32(path).toString();
+  private async outputChromeContentScript(
+    sourceAbsolutePath: string,
+    sourceFilePathInManifest: string,
+    distFilepath: string,
+  ) {
+    const result = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
 
-        const fileName = endemicHash + '_' + extChanged;
-
-        const outputPath = resolve(distPath, fileName);
-
-        const decoder = new TextDecoder();
-
-        const decorded = decoder.decode(result);
-
-        let code: string | Uint8Array = this.createDefineCode(this.defines.content) + decorded;
-
-        if (this.isWatch) {
-          code = `window.__CRX_CONTENT_BUILD_ID = '${this.buildId}';\n` + code;
-        }
-
-        fsExtra.outputFileSync(outputPath, code);
-        this.manifestFactory.resolve(raw.scriptResources.content[i], fileName);
-      }
-    });
-
-    scriptResources.sw.forEach((path, i) => {
-      const buildResult = this.bundler.getBuildResultFromPath(path);
-
-      const extChanged = this.changeExt(path, 'js');
-      const endemicHash = MurmurHash3.x86.hash32(path).toString();
+    if (result !== undefined) {
+      const extChanged = this.changeExt(sourceAbsolutePath, 'js');
+      const endemicHash = MurmurHash3.x86.hash32(sourceAbsolutePath).toString();
 
       const fileName = endemicHash + '_' + extChanged;
 
-      const outputPath = resolve(distPath, fileName);
+      const outputPath = resolve(distFilepath, fileName);
 
-      if (buildResult !== undefined) {
-        let code: string;
+      const decoder = new TextDecoder();
 
-        if (this.isWatch) {
-          code =
-            this.createDefineCode(this.defines.sw) + this.createDev.outputDevelomentSw(buildResult);
-        } else {
-          const decoder = new TextDecoder();
-          code = this.createDefineCode(this.defines.sw) + decoder.decode(buildResult);
-        }
+      const decorded = decoder.decode(result);
 
-        fsExtra.outputFileSync(outputPath, code);
-        this.manifestFactory.resolve(raw.scriptResources.sw[i], fileName);
+      let code: string | Uint8Array = this.createDefineCode(this.defines.content) + decorded;
+
+      if (this.isWatch) {
+        code = `window.__CRX_CONTENT_BUILD_ID = '${this.buildId}';\n` + code;
       }
-    });
 
-    cssResources.forEach((path, i) => {
-      const result = this.bundler.getBuildResultFromPath(path);
+      this.logger.dispatchDebug(
+        `👋 Output a contentscript to dist. ${chalk.gray(`${sourceAbsolutePath}" -> "${outputPath}`)}`,
+      );
+      await fsExtra.outputFile(outputPath, code);
 
-      const extChanged = this.changeExt(path, 'css');
-      const endemicHash = MurmurHash3.x86.hash32(path).toString();
+      this.manifestFactory.resolve(sourceFilePathInManifest, fileName);
+    }
+  }
 
-      const fileName = endemicHash + '_' + extChanged;
+  private async outputChromeSw(
+    sourceAbsolutePath: string,
+    sourceFilePathInManifest: string,
+    distFilepath: string,
+  ) {
+    const buildResult = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
 
-      const outputPath = resolve(distPath, fileName);
+    const extChanged = this.changeExt(sourceAbsolutePath, 'js');
+    const endemicHash = MurmurHash3.x86.hash32(sourceAbsolutePath).toString();
 
-      if (result !== undefined) {
-        fsExtra.outputFileSync(outputPath, result);
-        this.manifestFactory.resolve(raw.cssResources[i], fileName);
-      }
-    });
+    const fileName = endemicHash + '_' + extChanged;
 
-    popup.forEach((path, i) => {
-      const result = this.bundler.getBuildResultFromPath(path);
-      const endemicHash = MurmurHash3.x86.hash32(path).toString();
-      const fileName = endemicHash + '.html';
-      const outputPath = resolve(distPath, fileName);
+    const outputPath = resolve(distFilepath, fileName);
 
-      if (result !== undefined) {
+    if (buildResult !== undefined) {
+      let code: string;
+
+      if (this.isWatch) {
+        code =
+          this.createDefineCode(this.defines.sw) + this.createDev.outputDevelomentSw(buildResult);
+      } else {
         const decoder = new TextDecoder();
-        const code = this.createDefineCode(this.defines.popup) + decoder.decode(result);
-
-        fsExtra.outputFileSync(outputPath, code);
-        this.manifestFactory.resolve(raw.htmlResources.popup[i], fileName);
+        code = this.createDefineCode(this.defines.sw) + decoder.decode(buildResult);
       }
-    });
+
+      this.logger.dispatchDebug(
+        `👋 Output a service worker to dist. ${chalk.gray(`${sourceAbsolutePath}" -> "${outputPath}`)}`,
+      );
+      await fsExtra.outputFile(outputPath, code);
+
+      this.manifestFactory.resolve(sourceFilePathInManifest, fileName);
+    }
+  }
+
+  private async outputAllChromeCss(distPath: string) {
+    const {
+      resources: { cssResources, raw },
+    } = this.manifestParser.parseResult;
+
+    await Promise.all(
+      cssResources.map(async (path, i) => {
+        await this.outputChromeCss(path, raw.cssResources[i], distPath);
+      }),
+    );
+  }
+
+  private async outputChromeCss(
+    sourceAbsolutePath: string,
+    sourceFilePathInManifest: string,
+    distFilepath: string,
+  ) {
+    const result = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+
+    const extChanged = this.changeExt(sourceAbsolutePath, 'css');
+    const endemicHash = MurmurHash3.x86.hash32(sourceAbsolutePath).toString();
+
+    const fileName = endemicHash + '_' + extChanged;
+
+    const outputPath = resolve(distFilepath, fileName);
+
+    if (result !== undefined) {
+      this.logger.dispatchDebug(
+        `👋 Output a css to dist. ${chalk.gray(`${sourceAbsolutePath}" -> "${outputPath}`)}`,
+      );
+      await fsExtra.outputFile(outputPath, result);
+      this.manifestFactory.resolve(sourceFilePathInManifest, fileName);
+    }
+  }
+
+  private async outputPopup(
+    sourceAbsolutePath: string,
+    sourceFilePathInManifest: string,
+    distFilepath: string,
+  ) {
+    const result = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+    const endemicHash = MurmurHash3.x86.hash32(sourceAbsolutePath).toString();
+    const fileName = endemicHash + '.html';
+    const outputPath = resolve(distFilepath, fileName);
+
+    if (result !== undefined) {
+      const decoder = new TextDecoder();
+      const code = this.createDefineCode(this.defines.popup) + decoder.decode(result);
+
+      this.logger.dispatchDebug(
+        `👋 Output a html for popup to dist. ${chalk.gray(`${sourceAbsolutePath}" -> "${outputPath}`)}`,
+      );
+      await fsExtra.outputFile(outputPath, code);
+      this.manifestFactory.resolve(sourceFilePathInManifest, fileName);
+    }
   }
 
   /**
    * Include isolated connector
    */
-  private outputIsolatedConnector() {
+  private async outputIsolatedConnector() {
     const {
       output: { chrome },
       server: { host, websocket },
@@ -253,7 +364,7 @@ export class Distributior {
     if (includeConnector) {
       const isoFileName = 'crxm-isolated-connector.js';
       const isoConnectorPath = resolve(chrome, isoFileName);
-      fsExtra.outputFileSync(
+      fsExtra.outputFile(
         isoConnectorPath,
         `${stringifyFunction(isolatedConnector, [this.buildId, JSON.stringify(this.configLoader.useConfig())])}\n`,
       );
@@ -298,36 +409,41 @@ export class Distributior {
         semi: true,
       });
 
-      fsExtra.outputFileSync(output, formated);
+      await fsExtra.outputFile(output, formated);
     }
 
     if (this.isWatch) {
       const code = this.createDev.outputDevelopmentUserjs();
       const output = resolve(dirname(distPath), 'dev.user.js');
-      fsExtra.outputFileSync(output, code);
+      await fsExtra.outputFile(output, code);
     }
+
+    this.logger.dispatchDebug(`👋 Output a userjs to dist. ${chalk.gray(`"${output}"`)}`);
   }
 
-  private copyPublicDir(distPath: string) {
+  private async copyPublicDir(distPath: string) {
     const { public: publicDir } = this.configLoader.useConfig();
 
     if (publicDir !== undefined) {
-      fsExtra.copySync(publicDir, resolve(distPath, 'public'), {
+      await fsExtra.copy(publicDir, resolve(distPath, 'public'), {
         overwrite: true,
       });
     }
   }
 
-  private copyIcons(distPath: string) {
+  private async copyIcons(distPath: string) {
     const { icons } = this.manifestParser.parseResult;
     if (icons !== null) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      Object.entries(icons).forEach(([key, { raw, path, size }]) => {
-        const fileName = basename(path);
-        const output = resolve(distPath, 'assets/icons', fileName);
-        fsExtra.copySync(path, output);
-        this.manifestFactory.resolve(raw, 'assets/icons/' + fileName);
-      });
+      await Promise.all(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        Object.entries(icons).map(async ([_key, { raw, path }]) => {
+          const fileName = basename(path);
+          const output = resolve(distPath, 'assets/icons', fileName);
+          await fsExtra.copy(path, output);
+          this.manifestFactory.resolve(raw, 'assets/icons/' + fileName);
+        }),
+      );
     }
   }
 }

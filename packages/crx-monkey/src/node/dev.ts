@@ -74,7 +74,7 @@ export async function dev() {
   // Bundle
   await bundler.watch();
   // Output bundled file to dist
-  distributior.dist();
+  await distributior.distAll();
 
   // On updated manifest or config
   watcher.addListener(async () => {
@@ -97,7 +97,7 @@ export async function dev() {
     await bundler.stopWatch();
     await bundler.watch();
     // Output bundled file to dist
-    distributior.dist();
+    await distributior.distAll();
 
     await fileServer.dispose();
     await fileServer.start();
@@ -106,18 +106,23 @@ export async function dev() {
   });
 
   // On updated script
-  bundler.addListener((target) => {
-    distributior.dist();
+  bundler.addListener(async (target) => {
+    await distributior.dist(target.entryPoint, 'userjs');
 
     if (target.flag === 'content') {
+      await distributior.dist(target.entryPoint, target.flag);
       sockServer.reload('RELOAD_CONTENT_SCRIPT');
     } else if (target.flag === 'sw') {
+      await distributior.dist(target.entryPoint, target.flag);
       sockServer.reload('RELOAD_SW');
     } else if (target.flag === 'css') {
+      await distributior.dist(target.entryPoint, target.flag);
       sockServer.reload('RELOAD_CSS');
     } else if (target.flag === 'html_script') {
+      await distributior.dist(target.entryPoint, 'popup');
       sockServer.reload('RELOAD_POPUP_JS');
     } else if (target.flag === 'html' || target.flag === 'html_css') {
+      await distributior.dist(target.entryPoint, 'popup');
       sockServer.reload('RELOAD_POPUP_HTML');
     } else {
       sockServer.reload('ALL');

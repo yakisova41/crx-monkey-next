@@ -9,7 +9,7 @@ const config = {
   plugins: ['@typescript-eslint'],
   parserOptions: {
     sourceType: 'module',
-    ecmaVersion: 2022,
+    ecmaVersion: 'latest',
   },
   extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
   ignorePatterns: ['dist/*', '.eslintrc.cjs'],
