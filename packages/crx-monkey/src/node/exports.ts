@@ -50,6 +50,7 @@ export function defineConfig(userConfig: CrxmConfig): CrxmConfigRequired {
         esbuild: {
           sourcemap: 'inline',
         },
+        typeCheck: true,
       }),
       '^.*.(css|sass|scss)$': sassBundlerWatch(),
       '^.*.(html|htm)$': htmlBundlerWatch({
