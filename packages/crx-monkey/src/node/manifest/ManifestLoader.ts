@@ -4,7 +4,7 @@ import { resolve, dirname } from 'path';
 import { inject, injectable } from 'inversify';
 import type { I_ConfigLoader } from '../ConfigLoader';
 import { TYPES } from '../types';
-import { existsSync } from 'fs';
+import { exists } from 'fs-extra';
 
 export interface I_ManifestLoader {
   loadManifest(): Promise<void>;
@@ -35,11 +35,11 @@ export class ManifestLoader implements I_ManifestLoader {
     // Get manfest path\
     const resolvedManifestPath = resolveFilePath(this.manifestPath);
 
-    if (!existsSync(resolvedManifestPath)) {
+    if (!await exists(resolvedManifestPath)) {
       throw new Error(`The manifest does not exist "${this.manifestPath}".`);
     }
 
-    await noCacheImport<{ default: CrxmManifestImportantKeyRequired }>(resolvedManifestPath).then(
+    await noCacheImport<{ default: CrxmManifestImportantKeyRequired }>(resolvedManifestPath, dirname(resolvedManifestPath)).then(
       (manifest) => {
         const exportedManifest = manifest.default as CrxmManifestImportantKeyRequired;
 
