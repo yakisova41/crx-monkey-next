@@ -424,7 +424,7 @@ export class Distributior {
   private async copyPublicDir(distPath: string) {
     const { public: publicDir } = this.configLoader.useConfig();
 
-    if (publicDir !== undefined) {
+    if (publicDir !== undefined && publicDir !== false) {
       await fsExtra.copy(publicDir, resolve(distPath, 'public'), {
         overwrite: true,
       });
