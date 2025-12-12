@@ -30,9 +30,13 @@ export class UserscriptRegisterer {
     if (rawManifest.content_scripts !== undefined) {
       const { allMatches } = this.createMatchMap();
 
-      if (!allMatches.includes('<all_urls>')) {
+      if (allMatches.includes('<all_urls>')) {
         userscriptHeaderFactory.push('@match', 'http://*/*');
         userscriptHeaderFactory.push('@match', 'https://*/*');
+      } else {
+        allMatches.forEach((match) => {
+          userscriptHeaderFactory.push('@match', match);
+        });
       }
     }
 
