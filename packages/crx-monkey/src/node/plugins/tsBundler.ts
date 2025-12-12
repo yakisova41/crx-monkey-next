@@ -54,9 +54,27 @@ function esbuildTypecheckPlugin(options: EsbuildTypecheckPluginArgs = { exit: fa
               if (d.file && d.start !== undefined) {
                 const { line, character } = d.file.getLineAndCharacterOfPosition(d.start);
 
+                // Get source code
+                const fileText = d.file.getFullText();
+                const lines = fileText.split(/\r?\n/);
+                const startLine = Math.max(0, line - 1);
+                const endLine = Math.min(lines.length - 1, line + 1);
+
                 console.error(
-                  `\n ${chalk.bgBlueBright(' Typescript ')} ${chalk.bold(message)}\n ${chalk.gray(`${d.file.fileName} (${line + 1},${character + 1})`)}\n`,
+                  `\n ${chalk.bgBlueBright(' Typescript ')} ${chalk.bold(message)}\n` +
+                    `   ${chalk.gray(`${d.file.fileName} (${line + 1},${character + 1})`)}`,
                 );
+
+                for (let i = startLine; i <= endLine; i++) {
+                  const lineNumber = String(i + 1).padStart(4);
+                  const prefix = i === line ? chalk.yellow('>') : ' ';
+                  console.error(`${prefix} ${chalk.gray(lineNumber)}  ${lines[i]}`);
+
+                  if (i === line) {
+                    console.error(`    ${' '.repeat(6 + character)}${chalk.red('^')}`);
+                  }
+                }
+
                 if (options.exit) {
                   process.exit(1);
                 }
