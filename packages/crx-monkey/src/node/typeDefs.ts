@@ -61,7 +61,7 @@ export interface CrxmConfig {
   /**
    * A directory copied as it is to `/public` in dist.
    */
-  public?: string | undefined;
+  public?: string | false;
   /**
    * Define variables to bundled script.
    */

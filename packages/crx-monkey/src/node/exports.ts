@@ -64,7 +64,7 @@ export function defineConfig(userConfig: CrxmConfig): CrxmConfigRequired {
       }),
     },
     logLevel: 'error',
-    public: '/public',
+    public: false,
     define: {
       sw: {},
       contentscripts: {},
