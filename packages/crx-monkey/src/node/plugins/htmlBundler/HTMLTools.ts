@@ -27,6 +27,24 @@ export class HTMLTools {
     this.htmlParserRoot = this.getParser(popupPath);
   }
 
+  public async buildForUserjs() {
+    const htmlParserRoot = this.getParser(this.popupPath);
+    const parseResult = this.parse();
+    const diff = this.getParseResultDiff(parseResult);
+    const decorder = new TextDecoder();
+
+    diff.localScripts.add.forEach((scriptPath) => {
+      const result = this.bundler.getBuildResultFromPath(scriptPath);
+      if (result !== undefined) {
+        const targetElement = parseResult.requestLocalSrcFiles[scriptPath];
+        const resultStr = decorder.decode(result);
+        targetElement.innerHTML = resultStr;
+      }
+    });
+
+    return htmlParserRoot.toString();
+  }
+
   public async build() {
     this.htmlParserRoot = this.getParser(this.popupPath);
     const result = this.parse();

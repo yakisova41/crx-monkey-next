@@ -70,6 +70,10 @@ export interface CrxmConfig {
     contentscripts?: Record<string, string>;
     popup?: Record<string, string>;
   };
+  /**
+   * Use the popup in userjs.
+   */
+  popup_in_userscript?: boolean;
 }
 
 type DeepRequired<T> = {

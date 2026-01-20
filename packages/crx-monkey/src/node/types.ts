@@ -17,6 +17,7 @@ export const TYPES = {
   SockServer: Symbol.for('I_SockServer'),
   CreateDevClient: Symbol.for('I_CreateDevClient'),
   FileServer: Symbol.for('I_FileServer'),
+  Popup: Symbol.for('I_Popup'),
 
   BuildID: Symbol.for('BuildID'),
   CacheDir: Symbol.for('CacheDir'),

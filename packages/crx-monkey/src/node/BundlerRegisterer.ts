@@ -9,6 +9,7 @@ import { dirname, resolve } from 'path';
 import chalk from 'chalk';
 import { Logger } from './Logger';
 import { Distributior } from './Distributior';
+import { Popup } from './popup/Popup';
 
 export interface I_BundlerRegisterer {}
 
@@ -26,6 +27,7 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     @inject(TYPES.Watcher) private readonly watcher: Watcher,
     @inject(TYPES.CrxmBundler) private readonly bundler: CrxmBundler,
     @inject(TYPES.Logger) private readonly logger: Logger,
+    @inject(TYPES.Popup) private readonly popup: Popup,
     @inject(TYPES.IsWatch) private readonly isWatch: boolean,
     @inject(TYPES.Distributior) private readonly distributior: Distributior,
   ) {}
@@ -33,7 +35,7 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
   /**
    * Register all build targets for bundler from manifest.
    */
-  public registerAll() {
+  public async registerAll() {
     const fileChangeResult = this.fileChangeCheck();
 
     /**
@@ -43,9 +45,10 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
       ['content', fileChangeResult.script.content.added],
       ['sw', fileChangeResult.script.sw.added],
       ['css', fileChangeResult.css.added],
-      ['html', fileChangeResult.html.added],
+      // ['html', fileChangeResult.html.added],
     ];
 
+    // Register sources to bundler without html.
     for (const [flag, paths] of addTargetGroups) {
       for (const path of paths) {
         const buildPlugin = this.getAppropriateBuildPlugin(path);
@@ -82,6 +85,19 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     }
 
     this.defineAllVars();
+
+    /**
+     * popup
+     */
+    await Promise.all(
+      fileChangeResult.html.added.map(async (htmlEntry) => {
+        await this.popup.register(htmlEntry);
+      }),
+    );
+
+    fileChangeResult.html.removed.forEach(async (htmlEntry) => {
+      this.popup.remove(htmlEntry);
+    });
   }
 
   /**

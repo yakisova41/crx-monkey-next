@@ -20,7 +20,7 @@ import { Logger } from './Logger';
  */
 @injectable()
 export class CrxmBundler implements I_CrxmBundler {
-  private targets: Record<string, BuildTarget> = {};
+  private _targets: Record<string, BuildTarget> = {};
   private _compileResults: Record<string, Uint8Array> = {};
   private watchers: CrxmBundlerPluginWatcher[] = [];
   private updateHandlers: ScriptUpdateHandler[] = [];
@@ -34,13 +34,17 @@ export class CrxmBundler implements I_CrxmBundler {
     return this._compileResults;
   }
 
+  public get targets() {
+    return this._targets;
+  }
+
   public addTarget(
     entryPoint: string,
     usingPlugin: { build: CrxmBundlerPlugin; watch: CrxmBundlerPluginWatch },
     flag: string = '',
   ) {
     const hash = crypto.randomUUID();
-    this.targets[hash] = { entryPoint, usingPlugin, hash, flag };
+    this._targets[hash] = { entryPoint, usingPlugin, hash, flag };
 
     return hash;
   }
@@ -48,7 +52,7 @@ export class CrxmBundler implements I_CrxmBundler {
   public removeTarget(targetEntryPoint: string, flag: string | null = null) {
     const hash = this.getInternalHashFromPath(targetEntryPoint, flag);
 
-    delete this.targets[hash];
+    delete this._targets[hash];
   }
 
   public getInternalHashFromPath(filePath: string, targetFlag: string | null = null) {
@@ -56,13 +60,13 @@ export class CrxmBundler implements I_CrxmBundler {
 
     if (targetFlag !== null) {
       // flag filter
-      hash = Object.keys(this.targets).filter((hash) => {
-        const { entryPoint, flag } = this.targets[hash];
+      hash = Object.keys(this._targets).filter((hash) => {
+        const { entryPoint, flag } = this._targets[hash];
         return entryPoint === filePath && flag === targetFlag;
       })[0];
     } else {
-      hash = Object.keys(this.targets).filter((hash) => {
-        const { entryPoint } = this.targets[hash];
+      hash = Object.keys(this._targets).filter((hash) => {
+        const { entryPoint } = this._targets[hash];
         return entryPoint === filePath;
       })[0];
     }
@@ -146,7 +150,7 @@ export class CrxmBundler implements I_CrxmBundler {
     const absolutePaths = await this.getTargetAbsolutePaths();
 
     const absolutePath = resolveFilePath(absolutePaths[hash]);
-    const { usingPlugin } = this.targets[hash];
+    const { usingPlugin } = this._targets[hash];
 
     if (await fse.exists(absolutePath)) {
       const { plugin, name } = usingPlugin.watch;
@@ -159,7 +163,7 @@ export class CrxmBundler implements I_CrxmBundler {
 
         // Dispatch update
         this.updateHandlers.forEach((handler) => {
-          handler(this.targets[hash]);
+          handler(this._targets[hash]);
         });
       };
 
@@ -175,7 +179,12 @@ export class CrxmBundler implements I_CrxmBundler {
   }
 
   public async compileForce(hash: string) {
-    const target = this.targets[hash];
+    const target = this._targets[hash];
+
+    if (target === undefined) {
+      throw new Error(this.logger.dispatchErr(`hash "${hash}" is not registered with Bundler."`));
+    }
+
     const absolutePaths = await this.getTargetAbsolutePaths();
 
     const absolutePath = resolveFilePath(absolutePaths[hash]);
@@ -195,7 +204,7 @@ export class CrxmBundler implements I_CrxmBundler {
     await Promise.all(
       Object.keys(absolutePaths).map(async (hash) => {
         const absolutePath = resolveFilePath(absolutePaths[hash]);
-        const { usingPlugin } = this.targets[hash];
+        const { usingPlugin } = this._targets[hash];
 
         if (await fse.exists(absolutePath)) {
           compileResults[hash] = await usingPlugin.build.plugin(absolutePath, this);
@@ -219,8 +228,8 @@ export class CrxmBundler implements I_CrxmBundler {
     const projectDir = dirname(path);
 
     const paths: Record<string, string> = {};
-    Object.keys(this.targets).map((hash) => {
-      const { entryPoint } = this.targets[hash];
+    Object.keys(this._targets).map((hash) => {
+      const { entryPoint } = this._targets[hash];
       paths[hash] = resolve(projectDir, entryPoint);
     });
 

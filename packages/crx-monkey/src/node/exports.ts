@@ -70,6 +70,7 @@ export function defineConfig(userConfig: CrxmConfig): CrxmConfigRequired {
       contentscripts: {},
       popup: {},
     },
+    popup_in_userscript: false,
   };
 
   return makeDefineFunc(defaultConfig, userConfig);

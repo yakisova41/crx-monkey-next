@@ -26,6 +26,7 @@ export class UserscriptRegisterer {
   private async setManifestToUserscript() {
     const rawManifest = this.manifestLoader.useManifest();
     const userscriptHeaderFactory = this.headerFactory;
+    const config = this.configLoader.useConfig();
 
     if (rawManifest.content_scripts !== undefined) {
       const { allMatches } = this.createMatchMap();
@@ -113,6 +114,17 @@ export class UserscriptRegisterer {
       const base64 = this.convertImgToBase64(minIcon.path);
 
       userscriptHeaderFactory.push('@icon', base64);
+    }
+
+    /**
+     * If using popup
+     */
+    if (
+      config.popup_in_userscript &&
+      this.manifestParser.parseResult.resources.htmlResources.popup.length !== 0
+    ) {
+      userscriptHeaderFactory.push('@grant', 'GM_registerMenuCommand');
+      userscriptHeaderFactory.push('@grant', 'unsafeWindow');
     }
 
     /**

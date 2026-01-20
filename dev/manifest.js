@@ -12,6 +12,7 @@ export default defineManifest({
       matches: ['<all_urls>'],
       userscript_direct_inject: false,
       use_isolated_connection: true,
+      trusted_inject: true,
     },
   ],
   background: {

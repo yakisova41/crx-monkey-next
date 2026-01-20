@@ -47,6 +47,7 @@ export class Logger {
     if (this.logLevel === 'debug' || this.logLevel === 'error' || this.logLevel === 'info') {
       console.log(...[`[${this.getDateNowFormated()}] ${chalk.bgGreen(' LOG ')} `, ...detail]);
     }
+    return detail.join('\n');
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,6 +56,7 @@ export class Logger {
       console.log(...[`[${this.getDateNowFormated()}] ${chalk.bgRed(' ERROR ')}`, ...detail]);
       console.log(this.getStack());
     }
+    return detail.join('\n');
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,6 +64,7 @@ export class Logger {
     if (this.logLevel === 'debug') {
       console.log(...[`[${this.getDateNowFormated()}] ${chalk.bgCyan(' DEBUG ')}`, ...detail]);
     }
+    return detail.join('\n');
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

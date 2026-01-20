@@ -18,3 +18,4 @@ document.querySelector('.count-up')!.addEventListener('click', () => {
   countC++;
   counterC.textContent = countC.toString();
 });
+

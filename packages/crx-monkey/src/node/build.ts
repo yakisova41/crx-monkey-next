@@ -46,7 +46,7 @@ export async function build() {
     copyLocales();
 
     // Register all build targets for bundler from manifest.
-    registerer.registerAll();
+    await registerer.registerAll();
 
     userscriptBundler.initialize();
     await userscriptRegisterer.sync();
