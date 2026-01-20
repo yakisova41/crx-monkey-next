@@ -8,6 +8,8 @@ export function userjs(
   bindGM: boolean,
   disableSock: boolean,
   buildId: string,
+  popup: boolean,
+  trusted: boolean,
 ) {
   unsafeWindow.__CRX_CONTENT_BUILD_ID = buildId;
 
@@ -139,12 +141,39 @@ export function userjs(
         */
 
       const scriptElem = document.createElement('script');
-      scriptElem.textContent = injectCode;
-      unsafeWindow.document.body.appendChild(scriptElem);
+
+      if (trusted) {
+        if (unsafeWindow.trustedTypes !== undefined) {
+          const policy = unsafeWindow.trustedTypes.createPolicy('crxm-trusted-inject-policy', {
+            createScript: (input) => input,
+          });
+          scriptElem.text = policy.createScript(injectCode.toString());
+        }
+      } else {
+        scriptElem.textContent = injectCode;
+      }
+
+      unsafeWindow.document.head.appendChild(scriptElem);
 
       if (loaded) {
         document.dispatchEvent(new Event('crxm_DOMContentLoaded'));
       }
     }
   });
+
+  /**
+   * Popup
+   */
+  if (popup) {
+    GM_registerMenuCommand(
+      'Open popup',
+      () => {
+        unsafeWindow.__crxm__popup[buildId]();
+      },
+      {
+        accessKey: 'a',
+        autoClose: true,
+      },
+    );
+  }
 }

@@ -16,6 +16,7 @@ import { Logger } from './Logger';
 import { SockServer } from './server/SockServer';
 import { CreateDevClient } from './development/CreateDevClient';
 import { FileServer } from './server/FileServer';
+import { Popup } from './popup/Popup';
 
 /**
  * DI container
@@ -27,10 +28,13 @@ export const container: Container = new Container();
  */
 container.bind<Logger>(TYPES.Logger).to(Logger).inSingletonScope();
 container.bind<ConfigLoader>(TYPES.ConfigLoader).to(ConfigLoader).inSingletonScope();
+
 container.bind<ManifestLoader>(TYPES.ManifestLoader).to(ManifestLoader).inSingletonScope();
 container.bind<ManifestParser>(TYPES.ManifestParser).to(ManifestParser).inSingletonScope();
 container.bind<CrxmBundler>(TYPES.CrxmBundler).to(CrxmBundler).inSingletonScope();
 container.bind<Watcher>(TYPES.Watcher).to(Watcher).inSingletonScope();
+container.bind<Popup>(TYPES.Popup).to(Popup).inSingletonScope();
+
 container.bind<BundlerRegisterer>(TYPES.BundlerRegisterer).to(BundlerRegisterer).inSingletonScope();
 container.bind<Distributior>(TYPES.Distributior).to(Distributior).inSingletonScope();
 container.bind<ManifestFactory>(TYPES.ManifestFactory).to(ManifestFactory).inSingletonScope();

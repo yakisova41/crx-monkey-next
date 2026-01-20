@@ -34,9 +34,20 @@ export class ManifestParser implements I_ManifestParser {
     this._parseResult = {
       resources: this.getAllResources(manifest),
       icons: this.getAllIcons(manifest),
+      isUsingTrustedScripts: this.isUseTrusted(manifest),
     };
 
     return this._parseResult;
+  }
+
+  private isUseTrusted(manifest: CrxmManifestImportantKeyRequired) {
+    let is = false;
+    manifest.content_scripts.forEach(({ trusted_inject }) => {
+      if (trusted_inject) {
+        is = true;
+      }
+    });
+    return is;
   }
 
   private getAllIcons(manifest: CrxmManifestImportantKeyRequired) {
@@ -188,4 +199,5 @@ export type ParseResult = {
       size: number;
     }
   > | null;
+  isUsingTrustedScripts: boolean;
 };

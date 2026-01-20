@@ -6,5 +6,6 @@ const config = defineConfig({
   public: './public',
   header: [['@author', 'developer']],
   logLevel: 'info',
+  popup_in_userscript: true,
 });
 export default config;

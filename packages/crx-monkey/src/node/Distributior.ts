@@ -14,6 +14,7 @@ import { CreateDevClient, stringifyFunction } from './development/CreateDevClien
 import { isolatedConnector } from './isolatedConnector';
 import { Logger } from './Logger';
 import chalk from 'chalk';
+import { Popup } from './popup/Popup';
 
 @injectable()
 export class Distributior {
@@ -34,6 +35,7 @@ export class Distributior {
     @inject(TYPES.Logger) private readonly logger: Logger,
     @inject(TYPES.IsWatch) private readonly isWatch: boolean,
     @inject(TYPES.BuildID) private readonly buildId: string,
+    @inject(TYPES.Popup) private readonly popup: Popup,
   ) {}
 
   /**
@@ -47,19 +49,15 @@ export class Distributior {
     } = this.manifestParser.parseResult;
 
     if (output.chrome !== undefined) {
-      if (output.chrome !== undefined) {
-        await this.outputAllChromeContentscripts(output.chrome);
-        await this.outputAllChromeCss(output.chrome);
-        if (scriptResources.sw.length !== 0) {
-          await this.outputChromeSw(
-            scriptResources.sw[0],
-            raw.scriptResources.sw[0],
-            output.chrome,
-          );
-        }
-        if (htmlResources.popup.length !== 0) {
-          await this.outputPopup(htmlResources.popup[0], raw.htmlResources.popup[0], output.chrome);
-        }
+      await this.outputAllChromeContentscripts(output.chrome);
+      await this.outputAllChromeCss(output.chrome);
+
+      if (scriptResources.sw.length !== 0) {
+        await this.outputChromeSw(scriptResources.sw[0], raw.scriptResources.sw[0], output.chrome);
+      }
+
+      if (htmlResources.popup.length !== 0) {
+        await this.popup.outputHtml();
       }
 
       await this.copyPublicDir(output.chrome);
@@ -106,7 +104,7 @@ export class Distributior {
 
     if (type === 'popup') {
       if (output.chrome !== undefined) {
-        await this.outputPopup(targetSourceAbsolutePath, raw.htmlResources.popup[0], output.chrome);
+        await this.popup.outputHtml();
       }
     }
 
@@ -314,28 +312,6 @@ export class Distributior {
     }
   }
 
-  private async outputPopup(
-    sourceAbsolutePath: string,
-    sourceFilePathInManifest: string,
-    distFilepath: string,
-  ) {
-    const result = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
-    const endemicHash = MurmurHash3.x86.hash32(sourceAbsolutePath).toString();
-    const fileName = endemicHash + '.html';
-    const outputPath = resolve(distFilepath, fileName);
-
-    if (result !== undefined) {
-      const decoder = new TextDecoder();
-      const code = this.createDefineCode(this.defines.popup) + decoder.decode(result);
-
-      this.logger.dispatchDebug(
-        `👋 Output a html for popup to dist. ${chalk.gray(`${sourceAbsolutePath}" -> "${outputPath}`)}`,
-      );
-      await fsExtra.outputFile(outputPath, code);
-      this.manifestFactory.resolve(sourceFilePathInManifest, fileName);
-    }
-  }
-
   /**
    * Include isolated connector
    */
@@ -380,8 +356,16 @@ export class Distributior {
 
   private async userjsBundle(distPath: string) {
     const {
-      resources: { scriptResources, raw, cssResources },
+      resources: {
+        scriptResources,
+        raw,
+        cssResources,
+        htmlResources: { popup },
+      },
     } = this.manifestParser.parseResult;
+
+    const { popup_in_userscript } = this.configLoader.useConfig();
+    const { isUsingTrustedScripts } = this.manifestParser.parseResult;
 
     scriptResources.content.forEach((path, i) => {
       const result = this.bundler.getBuildResultFromPath(path);
@@ -395,13 +379,28 @@ export class Distributior {
       const result = this.bundler.getBuildResultFromPath(path);
 
       if (result !== undefined) {
-        this.userscriptBundler.addStyle(raw.cssResources[i], result);
+        this.userscriptBundler.addStyle(raw.cssResources[i], result, isUsingTrustedScripts);
       }
     });
+
+    /**
+     * Popup inject
+     */
+    if (popup_in_userscript) {
+      if (popup.length === 0) {
+        throw new Error("Popup doesn't exist.");
+      }
+
+      const html = await this.popup.getHtmlInlined();
+      const popupHtmlPath = popup[0];
+
+      this.userscriptBundler.addPopup(popupHtmlPath, html);
+    }
 
     const output = resolve(distPath);
 
     const bundleResult = this.userscriptBundler.createCode();
+
     if (bundleResult !== undefined) {
       const formated = await prettier.format(bundleResult, {
         format: true,

@@ -87,3 +87,5 @@ export function developmentContentScript(
     }
   });
 }
+
+export type { IsolatedConnectorEvent };

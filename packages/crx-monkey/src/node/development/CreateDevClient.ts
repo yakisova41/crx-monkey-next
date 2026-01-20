@@ -9,6 +9,7 @@ import { resolve } from 'path';
 import { developmentContentScript } from './codes/extension';
 import fsExtra from 'fs-extra/esm';
 import { ManifestFactory } from '../manifest/ManifestFactory';
+import type { I_ManifestParser } from '../manifest/ManifestParser';
 
 @injectable()
 export class CreateDevClient {
@@ -18,6 +19,7 @@ export class CreateDevClient {
     @inject(TYPES.UserscriptHeaderFactory) private readonly headerFactory: UserscriptHeaderFactory,
     @inject(TYPES.ManifestFactory) private readonly manifestFactory: ManifestFactory,
     @inject(TYPES.BuildID) private readonly buildId: string,
+    @inject(TYPES.ManifestParser) private readonly manifestParser: I_ManifestParser,
   ) {}
 
   /**
@@ -45,7 +47,9 @@ export class CreateDevClient {
   public outputDevelopmentUserjs() {
     const {
       server: { disable_sock_in_userjs, host, port, websocket },
+      popup_in_userscript,
     } = this.configLoader.useConfig();
+    const { isUsingTrustedScripts } = this.manifestParser.parseResult;
 
     if (host === undefined || websocket === undefined || port === undefined) {
       throw new Error("Server host, port or  websocket's port were not specificated");
@@ -61,7 +65,16 @@ export class CreateDevClient {
     const code = [
       newFactory.toString(),
       '',
-      stringifyFunction(userjs, [host, port, websocket, false, disableSock, this.buildId]),
+      stringifyFunction(userjs, [
+        host,
+        port,
+        websocket,
+        false,
+        disableSock,
+        this.buildId,
+        popup_in_userscript,
+        isUsingTrustedScripts,
+      ]),
     ].join('\n');
 
     return code;

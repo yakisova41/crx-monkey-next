@@ -1,5 +1,5 @@
 import { CrxmContentScript } from 'src/node/typeDefs';
-import { convertFilePathToFuncName } from './UserscriptBundler';
+import { convertFilePathToFuncName } from './CodeBlock';
 
 interface Content {
   funcNames: string[];
@@ -8,6 +8,7 @@ interface Content {
   useDirectInject: boolean;
   matches: string[];
   run_at: 'document_start' | 'document_end' | 'document_idle';
+  useUnsafe: boolean;
 }
 
 /**
@@ -16,6 +17,8 @@ interface Content {
 export class CodeInjector {
   // Record<MatchPattern, Content>
   private contents: Content[] = [];
+
+  constructor(private readonly iswatch: boolean) {}
 
   /**
    * Register function names for functionized scripts
@@ -43,8 +46,20 @@ export class CodeInjector {
         useDirectInject: userscript_direct_inject !== undefined ? userscript_direct_inject : false,
         useTrustedScript: trusted_inject !== undefined ? trusted_inject : true,
         run_at: run_at === undefined ? 'document_idle' : run_at,
+        useUnsafe: this.iswatch ? false : true,
       });
     }
+  }
+
+  public addPopup(functionName: string) {
+    this.contents.push({
+      funcNames: [functionName],
+      matches: ['<all_urls>'],
+      useDirectInject: true,
+      useTrustedScript: true,
+      run_at: 'document_idle',
+      useUnsafe: this.iswatch ? false : true,
+    });
   }
 
   /**
@@ -54,79 +69,82 @@ export class CodeInjector {
   public getCode() {
     let code = '';
 
-    this.contents.forEach(({ matches, useTrustedScript, funcNames, run_at, useDirectInject }) => {
-      const varHash = crypto.randomUUID().replaceAll('-', '_');
+    this.contents.forEach(
+      ({ matches, useTrustedScript, funcNames, run_at, useDirectInject, useUnsafe }) => {
+        const global = useUnsafe ? 'unsafeWindow' : 'window';
+        const varHash = crypto.randomUUID().replaceAll('-', '_');
 
-      const createScriptElementVarName = () => {
-        return 'crxm_script_' + varHash + crypto.randomUUID().replaceAll('-', '_');
-      };
+        const createScriptElementVarName = () => {
+          return 'crxm_script_' + varHash + crypto.randomUUID().replaceAll('-', '_');
+        };
 
-      // match if
-      code +=
-        '\n\nif(' +
-        matches
-          .map((match) => {
-            if (match === '<all_urls>') {
-              return 'true';
-            }
-            return `location.href.match('^${match}') !== null`;
-          })
-          .join(',') +
-        '){';
+        // match if
+        code +=
+          '\n\nif(' +
+          matches
+            .map((match) => {
+              if (match === '<all_urls>') {
+                return 'true';
+              }
+              return `location.href.match('^${match}') !== null`;
+            })
+            .join(',') +
+          '){';
 
-      let codeInner = '';
+        let codeInner = '';
 
-      if (useDirectInject) {
-        // Define idle scripts element
-        const scriptElementVarName = createScriptElementVarName();
-        codeInner += `\nconst ${scriptElementVarName} = document.createElement("script");`;
+        if (useDirectInject) {
+          // Define idle scripts element
+          const scriptElementVarName = createScriptElementVarName();
+          codeInner += `\nconst ${scriptElementVarName} = document.createElement("script");`;
 
-        if (useTrustedScript) {
-          // Is this browser supported trustedTypes?
-          codeInner += '\nif(unsafeWindow.trustedTypes !== undefined){';
+          if (useTrustedScript) {
+            // Is this browser supported trustedTypes?
+            codeInner += `\nif(${global}.trustedTypes !== undefined){`;
 
-          // If supported, it would be create policy.
-          codeInner += `\nconst policy_${varHash} = unsafeWindow.trustedTypes.createPolicy("crxm-trusted-inject-policy", {createScript: (input) => input,});`;
+            // If supported, it would be create policy.
+            codeInner += `\nconst policy_${varHash} = ${global}.trustedTypes.createPolicy("crxm-trusted-inject-policy", {createScript: (input) => input,});`;
 
-          funcNames.forEach((funcName) => {
-            codeInner += `\n${scriptElementVarName}.text = policy_${varHash}.createScript(${scriptElementVarName}.text + \`(\${${funcName}.toString()})();\`);\n`;
-          });
+            funcNames.forEach((funcName) => {
+              codeInner += `\n${scriptElementVarName}.text = policy_${varHash}.createScript(${scriptElementVarName}.text + \`(\${${funcName}.toString()})();\`);\n`;
+            });
 
-          // end trustedTypes if
-          codeInner += '} else {';
+            // end trustedTypes if
+            codeInner += '} else {';
 
-          //  For environments that do not support trustedTypes
+            //  For environments that do not support trustedTypes
 
-          funcNames.forEach((funcName) => {
-            codeInner += `\n${scriptElementVarName}.innerHTML = ${scriptElementVarName}.innerHTML + \`(\${${funcName}.toString()})();\``;
-          });
+            funcNames.forEach((funcName) => {
+              codeInner += `\n${scriptElementVarName}.innerHTML = ${scriptElementVarName}.innerHTML + \`(\${${funcName}.toString()})();\``;
+            });
 
-          // end trusted else
-          codeInner += '}';
+            // end trusted else
+            codeInner += '}';
+          } else {
+            // Dont use trustedTypes
+
+            funcNames.forEach((funcName) => {
+              codeInner += `\n${scriptElementVarName}.innerHTML = ${scriptElementVarName}.innerHTML + \`(\${${funcName}.toString()})();\``;
+            });
+          }
+
+          codeInner += `\n${global}.document.body.appendChild(${scriptElementVarName});\n`;
         } else {
-          // Dont use trustedTypes
-
           funcNames.forEach((funcName) => {
-            codeInner += `\n${scriptElementVarName}.innerHTML = ${scriptElementVarName}.innerHTML + \`(\${${funcName}.toString()})();\``;
+            codeInner += `\n${funcName}();`;
           });
         }
 
-        codeInner += `\nunsafeWindow.document.body.appendChild(${scriptElementVarName});\n`;
-      } else {
-        funcNames.forEach((funcName) => {
-          codeInner += `\n${funcName}();`;
-        });
-      }
+        if (run_at === 'document_start') {
+          code += codeInner;
+        } else {
+          code += this.getCodeWrappedInjectTiming(codeInner, run_at);
+        }
 
-      if (run_at === 'document_start') {
-        code += codeInner;
-      } else {
-        code += this.getCodeWrappedInjectTiming(codeInner, run_at);
-      }
-
-      // end match if
-      code += '}';
-    });
+        // end match if
+        code += '}';
+      },
+    );
 
     return code;
     /*if (CodeInjector.useDomInject) {
