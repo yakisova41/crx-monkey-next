@@ -7,8 +7,8 @@ import { ConfigLoader } from '../ConfigLoader';
 import { basename, dirname, resolve } from 'path';
 import { CrxmBundler } from '../CrxmBundler';
 import MurmurHash3 from 'murmurhash3js';
-import datauri from 'datauri';
 import { ManifestFactory } from '../manifest/ManifestFactory';
+import { fileToDataUri } from '../file';
 
 @injectable()
 export class Popup {
@@ -263,7 +263,7 @@ export class Popup {
 
     await Promise.all(
       this.diff.srcFiles.add.map(async (filePath: string) => {
-        const content = await datauri(resolve(htmlDir, filePath));
+        const content = await fileToDataUri(resolve(htmlDir, filePath));
 
         if (content === undefined) {
           throw new Error(
