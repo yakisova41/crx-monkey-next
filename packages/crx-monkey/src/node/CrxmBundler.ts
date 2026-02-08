@@ -137,13 +137,14 @@ export class CrxmBundler implements I_CrxmBundler {
     this.logger.dispatchDebug('Files:', absolutePaths);
 
     const hashs = Object.keys(absolutePaths);
-    for (let i = 0; i < hashs.length; i++) {
-      const hash = hashs[i];
+    await Promise.all(
+      Object.entries(hashs).map(async ([, hash]) => {
+        const filePath = absolutePaths[hash];
+        this.logger.dispatchDebug(filePath);
 
-      this.logger.dispatchDebug(absolutePaths[hash]);
-
-      await this.watchFile(hash);
-    }
+        await this.watchFile(hash);
+      }),
+    );
   }
 
   private async watchFile(hash: string) {
