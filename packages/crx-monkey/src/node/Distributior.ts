@@ -251,7 +251,12 @@ export class Distributior {
     sourceFilePathInManifest: string,
     distFilepath: string,
   ) {
-    const buildResult = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+    let buildResult = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+
+    if (buildResult === undefined) {
+      await this.bundler.compileForce(this.bundler.getInternalHashFromPath(sourceAbsolutePath));
+      buildResult = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+    }
 
     const extChanged = this.changeExt(sourceAbsolutePath, 'js');
     const endemicHash = MurmurHash3.x86.hash32(sourceAbsolutePath).toString();
@@ -297,7 +302,12 @@ export class Distributior {
     sourceFilePathInManifest: string,
     distFilepath: string,
   ) {
-    const result = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+    let result = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+
+    if (result === undefined) {
+      await this.bundler.compileForce(this.bundler.getInternalHashFromPath(sourceAbsolutePath));
+      result = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+    }
 
     const extChanged = this.changeExt(sourceAbsolutePath, 'css');
     const endemicHash = MurmurHash3.x86.hash32(sourceAbsolutePath).toString();
