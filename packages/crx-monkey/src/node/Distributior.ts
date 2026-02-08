@@ -51,7 +51,6 @@ export class Distributior {
     if (output.chrome !== undefined) {
       await this.outputAllChromeContentscripts(output.chrome);
       await this.outputAllChromeCss(output.chrome);
-
       if (scriptResources.sw.length !== 0) {
         await this.outputChromeSw(scriptResources.sw[0], raw.scriptResources.sw[0], output.chrome);
       }
@@ -201,7 +200,6 @@ export class Distributior {
     const {
       resources: { scriptResources, raw },
     } = this.manifestParser.parseResult;
-
     await Promise.all(
       scriptResources.content.map(async (path, i) => {
         await this.outputChromeContentScript(path, raw.scriptResources.content[i], distPath);
@@ -214,7 +212,12 @@ export class Distributior {
     sourceFilePathInManifest: string,
     distFilepath: string,
   ) {
-    const result = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+    let result = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+
+    if (result === undefined) {
+      await this.bundler.compileForce(this.bundler.getInternalHashFromPath(sourceAbsolutePath));
+      result = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+    }
 
     if (result !== undefined) {
       const extChanged = this.changeExt(sourceAbsolutePath, 'js');
