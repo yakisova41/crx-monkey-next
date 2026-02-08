@@ -9,6 +9,9 @@ import { CrxmBundler } from '../CrxmBundler';
 import MurmurHash3 from 'murmurhash3js';
 import { ManifestFactory } from '../manifest/ManifestFactory';
 import { fileToDataUri } from '../file';
+import { htmlBundler, htmlBundlerWatch } from '../plugins/htmlBundler';
+import { Logger } from '../Logger';
+import chalk from 'chalk';
 
 @injectable()
 export class Popup {
@@ -33,6 +36,7 @@ export class Popup {
     @inject(TYPES.CrxmBundler) private readonly bundler: CrxmBundler,
     @inject(TYPES.ManifestFactory) private readonly manifestFactory: ManifestFactory,
     @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
+    @inject(TYPES.Logger) private readonly logger: Logger,
   ) {
     const {
       build,
@@ -62,6 +66,8 @@ export class Popup {
 
     this.parser.extension = await this.getParser(htmlEntry);
     this.parser.userjs = await this.getParser(htmlEntry);
+
+    this.logger.dispatchDebug(`🧇 Popup registered ${chalk.gray(`"${htmlEntry}"`)}`);
   }
 
   public async remove(htmlEntry: string) {
@@ -90,6 +96,9 @@ export class Popup {
       throw new Error('The HTML entry is null. Is it registered?');
     }
 
+    // Refresh parser
+    this.parser.extension = await this.getParser(this.entry);
+
     await this.outputExtensionResources();
     await this.outputAssetsToDist();
 
@@ -108,6 +117,8 @@ export class Popup {
         fileName,
       );
     }
+
+    this.logger.dispatchDebug(`👋 Output a popup html to dist. ${chalk.gray(`"${outputPath}"`)}`);
   }
 
   /**
@@ -122,6 +133,9 @@ export class Popup {
     if (this.entry === null) {
       throw new Error('The HTML entry is null. Is it registered?');
     }
+
+    // Refresh Parser
+    this.parser.userjs = await this.getParser(this.entry);
 
     this.resolveInline();
     this.applyCssForUserjsPopup();
@@ -166,6 +180,8 @@ export class Popup {
     height: 0;
   }`;
     this.parser.userjs.appendChild(style);
+
+    this.logger.dispatchDebug(`🧇 Default css has appended to popup.`);
   }
 
   /**
@@ -202,6 +218,10 @@ export class Popup {
 
           await fse.outputFile(outputPath, result);
 
+          this.logger.dispatchDebug(
+            `👋 An asset loaded by popup has been outputed. ${chalk.gray(`"${target.entryPoint}" -> "${outputPath}"`)}`,
+          );
+
           if (target.flag === 'html_script') {
             this.resolveAttr(entry, fileName, 'script', 'src', this.parser.extension);
           } else {
@@ -232,10 +252,21 @@ export class Popup {
         const baseFileName = basename(filePath);
         const newFilePath = '/assets/' + baseFileName;
         const absolutedNewFilePath = resolve(this.outputDir, 'assets', baseFileName);
-        await fse.copy(resolve(htmlDir, filePath), absolutedNewFilePath);
+
+        // unlink
+        if (await fse.exists(absolutedNewFilePath)) {
+          await fse.remove(absolutedNewFilePath);
+        }
+
+        await fse.copy(resolve(htmlDir, filePath), absolutedNewFilePath, { overwrite: true });
+
         this.resolveAttr(filePath, newFilePath, 'img', 'src', this.parser.extension);
         this.resolveAttr(filePath, newFilePath, 'video', 'src', this.parser.extension);
         this.resolveAttr(filePath, newFilePath, 'iframe', 'src', this.parser.extension);
+
+        this.logger.dispatchDebug(
+          `👋 A media loaded by popup has been outputed. ${chalk.gray(`"${filePath}" -> "${newFilePath}"`)}`,
+        );
       }),
 
       ...this.diff.srcFiles.delete.map(async (filePath: string) => {
@@ -408,6 +439,17 @@ export class Popup {
    * @returns
    */
   private async syncBundler(htmlEntry: string, diff: Diff): Promise<SyncResult[]> {
+    // register html
+    this.bundler.addTarget(
+      htmlEntry,
+      {
+        build: htmlBundler,
+        watch: htmlBundlerWatch,
+      },
+      'html',
+    );
+
+    // register script or css
     const result: SyncResult[] = [];
 
     const targetGroups: [string, string[]][] = [

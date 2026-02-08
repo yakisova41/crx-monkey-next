@@ -75,7 +75,7 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
       ['content', fileChangeResult.script.content.removed],
       ['sw', fileChangeResult.script.sw.removed],
       ['css', fileChangeResult.css.removed],
-      ['html', fileChangeResult.html.removed],
+      // ['html', fileChangeResult.html.removed],
     ];
 
     for (const [flag, paths] of rmTargetGroups) {
