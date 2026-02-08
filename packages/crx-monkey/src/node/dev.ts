@@ -64,7 +64,7 @@ export async function dev() {
   fileServer.start();
 
   // Register all build targets for bundler from manifest.
-  registerer.registerAll();
+  await registerer.registerAll();
 
   userscriptBundler.initialize();
   await userscriptRegisterer.sync();
