@@ -13,6 +13,7 @@ This is the build system created for [Return YouTube Comment Username
 
 [Documentation](https://github.com/yakisova41/crx-monkey-next/blob/main/Docs.md)
 
+[Example](https://github.com/yakisova41/crx-monkey-next/tree/main/dev)
 ## Feature
 
 - The same code can be used in Chrome extension and userscript.
@@ -22,7 +23,7 @@ This is the build system created for [Return YouTube Comment Username
 - Message passing from MAIN world to service_worker is available.
 - Highspeed build by esbuild.
 - Display a popup on a Userscript using the same code as the extension
-
+- You can define a Loader to transpile various files (such as sass).
 
 ## How to use
 ### 1. Install crx-monkey-next
