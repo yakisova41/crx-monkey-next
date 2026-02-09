@@ -57,7 +57,7 @@ export default defineManifest({
   ],
 })
 ```
-### 4 Run development mode
+### 4. Run development mode
 ```sh
 bunx crx-monkey-next dev
 ```
