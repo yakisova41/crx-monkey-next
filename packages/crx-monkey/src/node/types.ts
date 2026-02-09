@@ -18,7 +18,6 @@ export const TYPES = {
   CreateDevClient: Symbol.for('I_CreateDevClient'),
   FileServer: Symbol.for('I_FileServer'),
   Popup: Symbol.for('I_Popup'),
-
   BuildID: Symbol.for('BuildID'),
   CacheDir: Symbol.for('CacheDir'),
   IsWatch: Symbol.for('IsWatch'),

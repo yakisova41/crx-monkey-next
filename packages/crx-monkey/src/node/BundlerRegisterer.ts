@@ -30,6 +30,7 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     @inject(TYPES.Popup) private readonly popup: Popup,
     @inject(TYPES.IsWatch) private readonly isWatch: boolean,
     @inject(TYPES.Distributior) private readonly distributior: Distributior,
+    @inject(TYPES.BuildID) private readonly buildId: string,
   ) {}
 
   /**

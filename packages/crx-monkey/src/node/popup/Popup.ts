@@ -84,10 +84,18 @@ export class Popup {
     }
   }
 
+  public async refreshParser() {
+    if (this.entry === null) {
+      throw new Error('The HTML entry is null. Is it registered?');
+    }
+    // Refresh parser
+    this.parser.extension = await this.getParser(this.entry);
+  }
+
   /**
-   * Output HTML files and resources for the extension
+   * Get HTML files content and resources for the extension
    */
-  public async outputHtml() {
+  public async getHTML() {
     if (this.parser.extension === undefined) {
       throw new Error('No parser available, please register.');
     }
@@ -96,10 +104,6 @@ export class Popup {
       throw new Error('The HTML entry is null. Is it registered?');
     }
 
-    // Refresh parser
-    this.parser.extension = await this.getParser(this.entry);
-
-    await this.outputExtensionResources();
     await this.outputAssetsToDist();
 
     const data = this.parser.extension.toString();
@@ -109,16 +113,18 @@ export class Popup {
 
     const outputPath = resolve(this.outputDir, fileName);
 
-    await fse.outputFile(outputPath, data);
-
-    if (this.manifestFactory.rawManifest.action?.default_popup !== undefined) {
-      this.manifestFactory.resolve(
-        this.manifestFactory.rawManifest.action?.default_popup,
-        fileName,
-      );
-    }
-
-    this.logger.dispatchDebug(`👋 Output a popup html to dist. ${chalk.gray(`"${outputPath}"`)}`);
+    return {
+      contents: data,
+      outputPath,
+      resolveManifest: () => {
+        if (this.manifestFactory.rawManifest.action?.default_popup !== undefined) {
+          this.manifestFactory.resolve(
+            this.manifestFactory.rawManifest.action?.default_popup,
+            fileName,
+          );
+        }
+      },
+    };
   }
 
   /**
@@ -182,6 +188,23 @@ export class Popup {
     this.parser.userjs.appendChild(style);
 
     this.logger.dispatchDebug(`🧇 Default css has appended to popup.`);
+  }
+
+  public async getExtensionResources() {
+    return this.syncResults.map(({ hash, entry }) => {
+      const target = this.bundler.targets[hash];
+      return {
+        target,
+        resolveTarget: (newfileName: string) => {
+          if (target.flag === 'html_script') {
+            this.resolveAttr(entry, newfileName, 'script', 'src', this.parser.extension);
+          } else {
+            this.resolveAttr(entry, newfileName, 'link', 'href', this.parser.extension);
+            this.resolveAttr(entry, newfileName, 'a', 'href', this.parser.extension);
+          }
+        },
+      };
+    });
   }
 
   /**

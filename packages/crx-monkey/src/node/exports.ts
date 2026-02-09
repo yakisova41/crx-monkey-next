@@ -28,11 +28,7 @@ export function defineConfig(userConfig: CrxmConfig): CrxmConfigRequired {
     },
     header: [],
     build: {
-      '^.*.(ts|js|tsx|jsx)$': tsBundler({
-        esbuild: {
-          minify: true,
-        },
-      }),
+      '^.*.(ts|js|tsx|jsx)$': tsBundler({}),
       '^.*.(css|sass|scss)$': sassBundler(),
       '^.*.(html|htm)$': htmlBundler({
         output: 'dist/chrome',

@@ -129,7 +129,6 @@ export function tsBundler(options: TsBundlerOptions = { esbuild: {} }): CrxmBund
           platform: 'browser',
           logLevel: 'error',
           tsconfig: options.tsconfig,
-          external: ['esbuild', 'esbuild/*', 'fs-extra', 'fs-extra/*', 'fs', 'path', 'crypto'],
 
           plugins: [
             ...(options.esbuild?.plugins !== undefined ? options.esbuild.plugins : []),

@@ -2,7 +2,7 @@ import { waitResultOnce } from './message';
 import { CrxmConfigRequired } from '../node/typeDefs';
 
 export function getRunningRuntime() {
-  if (typeof window.__CRX_CONTENT_BUILD_ID === 'undefined') {
+  if (typeof __crxm_build_id === 'undefined') {
     return 'Userscript';
   } else {
     return 'Extension';
@@ -31,7 +31,7 @@ export async function getCrxmConfig() {
   window.postMessage(
     {
       type: 'get-conf',
-      crxContentBuildId: window.__CRX_CONTENT_BUILD_ID,
+      crxContentBuildId: __crxm_build_id,
       detail: null,
       actionId,
     },
@@ -58,7 +58,7 @@ export async function getExtensionId() {
     window.postMessage(
       {
         type: 'get-id',
-        crxContentBuildId: window.__CRX_CONTENT_BUILD_ID,
+        crxContentBuildId: __crxm_build_id,
         detail: null,
         actionId,
       },
@@ -81,7 +81,7 @@ export function attachConsole() {
       window.postMessage(
         {
           type: name,
-          crxContentBuildId: window.__CRX_CONTENT_BUILD_ID,
+          crxContentBuildId: __crxm_build_id,
           detail: args.join(' '),
           actionId,
         },
