@@ -53,7 +53,7 @@ async function sendMessage<T = never, U = never>(
   window.postMessage(
     {
       type: 'send-message',
-      crxContentBuildId: window.__CRX_CONTENT_BUILD_ID,
+      crxContentBuildId: __crxm_build_id,
       detail: { message, options },
       actionId,
     },
@@ -82,7 +82,7 @@ function addListener<T = never>(
   window.postMessage(
     {
       type: 'on-message',
-      crxContentBuildId: window.__CRX_CONTENT_BUILD_ID,
+      crxContentBuildId: __crxm_build_id,
       detail: null,
       actionId,
     },
@@ -104,7 +104,7 @@ function addListener<T = never>(
       window.postMessage(
         {
           type: 'remove-on-message',
-          crxContentBuildId: window.__CRX_CONTENT_BUILD_ID,
+          crxContentBuildId: __crxm_build_id,
           detail: null,
           actionId,
         },

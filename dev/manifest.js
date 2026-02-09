@@ -7,16 +7,17 @@ export default defineManifest({
   version: '0.0.1',
   content_scripts: [
     {
-      js: ['content_scripts/main.ts'],
-      css: ['content_scripts/style.scss'],
+      js: ['content_scripts/content_script.ts'],
+      css: ['content_scripts/content_style.scss'],
       matches: ['<all_urls>'],
       userscript_direct_inject: false,
       use_isolated_connection: true,
       trusted_inject: true,
+      world: 'MAIN',
     },
   ],
   background: {
-    service_worker: 'sw/main.ts',
+    service_worker: 'sw/sw.ts',
   },
   action: {
     default_popup: 'popup/index.html',

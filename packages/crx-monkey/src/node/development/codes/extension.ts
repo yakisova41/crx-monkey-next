@@ -27,7 +27,10 @@ export function developmentContentScript(
       switch (response.content) {
         case 'RELOAD_CSS':
         case 'RELOAD_CONTENT_SCRIPT':
-          location.reload();
+          setTimeout(() => {
+            location.reload();
+          });
+
           break;
         default:
           break;

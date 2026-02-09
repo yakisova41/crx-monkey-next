@@ -10,10 +10,7 @@ export * from './i18n';
 export * from './runtime';
 
 declare global {
-  interface Window {
-    __CRX_CONTENT_BUILD_ID: string;
-  }
-
+  const __crxm_build_id: string;
   interface WindowEventMap {
     'crx-isolated-connector-result': IsolateConnectorEvent<never>;
   }

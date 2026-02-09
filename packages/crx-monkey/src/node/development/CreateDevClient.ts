@@ -25,7 +25,7 @@ export class CreateDevClient {
   /**
    * Make code for service worker on developement.
    */
-  public outputDevelomentSw(code: Uint8Array) {
+  public outputDevelomentSw(code: string) {
     const {
       server: { host, websocket },
     } = this.configLoader.useConfig();
@@ -34,12 +34,9 @@ export class CreateDevClient {
       throw new Error("Server host or websocket's port were not specificated");
     }
 
-    const decoder = new TextDecoder('utf-8');
-    const originalCode = decoder.decode(code);
-
     const devCode = stringifyFunction(developSw, [host, websocket]);
 
-    const result = devCode + '\n\n' + originalCode;
+    const result = devCode + '\n\n' + code;
 
     return result;
   }

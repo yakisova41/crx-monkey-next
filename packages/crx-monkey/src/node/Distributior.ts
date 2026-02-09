@@ -18,7 +18,7 @@ import { Popup } from './popup/Popup';
 
 @injectable()
 export class Distributior {
-  private defines: Defines = {
+  private _defines: Defines = {
     content: [],
     sw: [],
     popup: [],
@@ -38,6 +38,10 @@ export class Distributior {
     @inject(TYPES.Popup) private readonly popup: Popup,
   ) {}
 
+  public get defines() {
+    return this._defines;
+  }
+
   /**
    * Output bundled file
    * This must be used after bundled.
@@ -56,13 +60,13 @@ export class Distributior {
       }
 
       if (htmlResources.popup.length !== 0) {
-        await this.popup.outputHtml();
+        await this.outputChromePopup(output.chrome);
       }
 
       await this.copyPublicDir(output.chrome);
       await this.copyIcons(output.chrome);
-      await this.outputManifest(output.chrome);
       await this.outputIsolatedConnector();
+      await this.outputManifest(output.chrome);
     }
 
     if (output.userjs !== undefined) {
@@ -103,7 +107,7 @@ export class Distributior {
 
     if (type === 'popup') {
       if (output.chrome !== undefined) {
-        await this.popup.outputHtml();
+        await this.outputChromePopup(output.chrome);
       }
     }
 
@@ -113,7 +117,7 @@ export class Distributior {
           if (output.chrome !== undefined) {
             const pathInManifest = raw.cssResources[i];
 
-            this.outputChromeCss(absolutePath, pathInManifest, output.chrome);
+            await this.outputChromeCss(absolutePath, pathInManifest, output.chrome);
           }
         }),
       );
@@ -144,7 +148,7 @@ export class Distributior {
   }
 
   public initializeDefine() {
-    this.defines = {
+    this._defines = {
       content: [],
       sw: [],
       popup: [],
@@ -158,7 +162,7 @@ export class Distributior {
    * @param to
    */
   public addDefine(name: string, value: string, to: 'sw' | 'content' | 'popup') {
-    this.defines[to].push({ name, value });
+    this._defines[to].push({ name, value });
   }
 
   private createDefineCode(defines: Define[]) {
@@ -207,6 +211,60 @@ export class Distributior {
     );
   }
 
+  private async outputChromePopup(distFilepath: string) {
+    // Output Resources
+    const resources = await this.popup.getExtensionResources();
+
+    await Promise.all(
+      resources.map(async ({ target: { entryPoint, hash, flag }, resolveTarget }) => {
+        let result = this.bundler.compileResults[hash];
+        if (result === undefined) {
+          // Rebuild
+          await this.bundler.compileForce(hash);
+          result = this.bundler.compileResults[hash];
+
+          if (result === undefined) {
+            throw new Error(`The result of "${hash}" is undefined.\nEntryPoint: "${entryPoint}"`);
+          }
+        }
+
+        const extConverted =
+          flag === 'html_script'
+            ? this.changeExt(entryPoint, 'js')
+            : this.changeExt(entryPoint, 'css');
+
+        const endemicHash = MurmurHash3.x86.hash32(entryPoint).toString();
+        const fileName = endemicHash + '_' + extConverted;
+
+        const outputPath = resolve(distFilepath, fileName);
+
+        const d = new TextDecoder();
+        const decorded = d.decode(result);
+
+        let code: string = decorded;
+
+        if (flag === 'html_script') {
+          // Inject build id
+          const buildIdInjection = `  var __crxm_build_id = "${this.buildId}";\n`;
+          const iifeRegex = /(\((?:async\s+)?(?:function.*?|.*?=>)\s*\{)/;
+          code = code.replace(iifeRegex, `$1\n${buildIdInjection}`);
+        }
+
+        await fsExtra.outputFile(outputPath, code);
+
+        resolveTarget(fileName);
+      }),
+    );
+
+    const { contents, outputPath, resolveManifest } = await this.popup.getHTML();
+
+    // Output html
+    await fsExtra.outputFile(outputPath, contents);
+    resolveManifest();
+
+    this.logger.dispatchDebug(`👋 Output a popup html to dist. ${chalk.gray(`"${outputPath}"`)}`);
+  }
+
   private async outputChromeContentScript(
     sourceAbsolutePath: string,
     sourceFilePathInManifest: string,
@@ -229,13 +287,14 @@ export class Distributior {
 
       const decoder = new TextDecoder();
 
-      const decorded = decoder.decode(result);
+      let decorded = decoder.decode(result);
 
-      let code: string | Uint8Array = this.createDefineCode(this.defines.content) + decorded;
+      // Inject build id
+      const buildIdInjection = `  var __crxm_build_id = "${this.buildId}";\n`;
+      const iifeRegex = /(\((?:async\s+)?(?:function.*?|.*?=>)\s*\{)/;
+      decorded = decorded.replace(iifeRegex, `$1\n${buildIdInjection}`);
 
-      if (this.isWatch) {
-        code = `window.__CRX_CONTENT_BUILD_ID = '${this.buildId}';\n` + code;
-      }
+      const code: string | Uint8Array = this.createDefineCode(this._defines.content) + decorded;
 
       this.logger.dispatchDebug(
         `👋 Output a contentscript to dist. ${chalk.gray(`${sourceAbsolutePath}" -> "${outputPath}`)}`,
@@ -266,14 +325,22 @@ export class Distributior {
     const outputPath = resolve(distFilepath, fileName);
 
     if (buildResult !== undefined) {
+      const decoder = new TextDecoder();
+      let resultDecoded = decoder.decode(buildResult);
+
+      // Inject build id
+      const buildIdInjection = `  var __crxm_build_id = "${this.buildId}";\n`;
+      const iifeRegex = /(\((?:async\s+)?(?:function.*?|.*?=>)\s*\{)/;
+      resultDecoded = resultDecoded.replace(iifeRegex, `$1\n${buildIdInjection}`);
+
       let code: string;
 
       if (this.isWatch) {
         code =
-          this.createDefineCode(this.defines.sw) + this.createDev.outputDevelomentSw(buildResult);
+          this.createDefineCode(this._defines.sw) +
+          this.createDev.outputDevelomentSw(resultDecoded);
       } else {
-        const decoder = new TextDecoder();
-        code = this.createDefineCode(this.defines.sw) + decoder.decode(buildResult);
+        code = this.createDefineCode(this._defines.sw) + resultDecoded;
       }
 
       this.logger.dispatchDebug(
@@ -353,7 +420,7 @@ export class Distributior {
     if (includeConnector) {
       const isoFileName = 'crxm-isolated-connector.js';
       const isoConnectorPath = resolve(chrome, isoFileName);
-      fsExtra.outputFile(
+      await fsExtra.outputFile(
         isoConnectorPath,
         `${stringifyFunction(isolatedConnector, [this.buildId, JSON.stringify(this.configLoader.useConfig())])}\n`,
       );
