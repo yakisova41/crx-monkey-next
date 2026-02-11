@@ -137,17 +137,29 @@ export class CrxmBundler implements I_CrxmBundler {
     this.logger.dispatchDebug('Files:', absolutePaths);
 
     const hashs = Object.keys(absolutePaths);
-    await Promise.all(
+    let notSucceedFirstBuildHashs = structuredClone(hashs);
+
+    return new Promise((resolve) => {
       Object.entries(hashs).map(async ([, hash]) => {
         const filePath = absolutePaths[hash];
         this.logger.dispatchDebug(filePath);
 
-        await this.watchFile(hash);
-      }),
-    );
+        const onEndFirstBuild = () => {
+          const newHashs = notSucceedFirstBuildHashs.filter((h) => h !== hash);
+          notSucceedFirstBuildHashs = newHashs;
+
+          if (notSucceedFirstBuildHashs.length == 0) {
+            // All watch target's first build succeed!
+            resolve(1);
+          }
+        };
+
+        await this.watchFile(hash, onEndFirstBuild);
+      });
+    });
   }
 
-  private async watchFile(hash: string) {
+  private async watchFile(hash: string, onEndFirstBuild: () => void) {
     const absolutePaths = await this.getTargetAbsolutePaths();
 
     const absolutePath = resolveFilePath(absolutePaths[hash]);
@@ -155,6 +167,8 @@ export class CrxmBundler implements I_CrxmBundler {
 
     if (await fse.exists(absolutePath)) {
       const { plugin, name } = usingPlugin.watch;
+
+      let isFirst = true;
 
       const resultSender = (result: Uint8Array) => {
         this.logger.dispatchDebug(`✨ [${name}] Builded  ${chalk.gray('"' + absolutePath + '"')}`);
@@ -166,6 +180,11 @@ export class CrxmBundler implements I_CrxmBundler {
         this.updateHandlers.forEach((handler) => {
           handler(this._targets[hash]);
         });
+
+        if (isFirst) {
+          isFirst = false;
+          onEndFirstBuild();
+        }
       };
 
       const watcher = await plugin(absolutePath, resultSender, this);

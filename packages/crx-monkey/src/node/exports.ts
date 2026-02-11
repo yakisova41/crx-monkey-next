@@ -8,6 +8,9 @@ import { tsBundler, tsBundlerWatch } from './plugins/tsBundler';
 import { sassBundler, sassBundlerWatch } from './plugins/sassBundler';
 import { htmlBundler, htmlBundlerWatch } from './plugins/htmlBundler/main';
 
+export { tsBundler, tsBundlerWatch };
+export { sassBundler, sassBundlerWatch };
+
 /**
  * Define config for crx monkey.
  * @param userConfig
