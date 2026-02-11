@@ -11,7 +11,7 @@ export function userjs(
   popup: boolean,
   trusted: boolean,
 ) {
-  unsafeWindow.__CRX_CONTENT_BUILD_ID = buildId;
+  const __crxm_build_id = buildId;
 
   if (!disableSock) {
     const websocket = new WebSocket(`ws://${host}:${websocketPort}`);
