@@ -69,7 +69,10 @@ export class UserscriptBundler {
     }
 
 
-    window.__crxm__popup = {};
+    if(window.__crxm__popup === undefined) {
+      window.__crxm__popup = {};    
+    }
+
     window.__crxm__popup["${this.buildID}"] = () => {
       const popup = makePopupElement();
       document.body.appendChild(popup);
