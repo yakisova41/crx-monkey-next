@@ -3,6 +3,7 @@ import fse, { exists } from 'fs-extra';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import mime from 'mime';
+import esbuild from 'esbuild';
 
 export type FileURL = `file:///${string}`;
 export type FilePath = string;
@@ -57,6 +58,60 @@ export async function noCacheImport<T = unknown>(
     fse.removeSync(tmpFilePath);
     throw e;
   }
+}
+
+/**
+ * Import a Typescript dynamically without any cache.
+ * @param filePath
+ * @returns A module.
+ */
+export async function noCacheImportTs<T = unknown>(
+  filePath: FilePath,
+  base: FilePath = import.meta.dirname,
+) {
+  const buildResult = await esbuild
+    .build({
+      entryPoints: [filePath],
+      write: false,
+      platform: 'node',
+      bundle: true,
+      target: 'esnext',
+      format: 'esm',
+      external: [
+        'fs',
+        'path',
+        '../packages/crx-monkey/dist/node/exports.js',
+        'crx-monkey',
+        'crx-monkey-next',
+      ],
+    })
+    .then((result) => {
+      const outputFile = result.outputFiles[0];
+      return outputFile.contents;
+    });
+
+  const tmpFilePath = path.resolve(base, crypto.randomUUID());
+
+  await fse.outputFile(tmpFilePath, buildResult);
+
+  try {
+    const module = (await import(resolveFilePath(tmpFilePath, true))) as T;
+    fse.removeSync(tmpFilePath);
+    return module;
+  } catch (e) {
+    fse.removeSync(tmpFilePath);
+    throw e;
+  }
+}
+
+/**
+ * Is typescript file
+ * @param filepath
+ * @returns
+ */
+export function isTs(filepath: string) {
+  const s = filepath.split('.');
+  return s[s.length - 1] === 'ts' ? true : false;
 }
 
 export function fileToDataUri(filePath: string) {

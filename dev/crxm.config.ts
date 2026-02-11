@@ -1,4 +1,3 @@
-// @ts-check
 import { defineConfig } from '../packages/crx-monkey/dist/node/exports.js';
 
 const config = defineConfig({
@@ -7,5 +6,6 @@ const config = defineConfig({
   header: [['@author', 'developer']],
   logLevel: 'info',
   popup_in_userscript: true,
+  manifest: './manifest.ts',
 });
 export default config;

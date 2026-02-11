@@ -1,5 +1,5 @@
 import { CrxmManifestImportantKeyRequired } from 'src/node/typeDefs';
-import { noCacheImport, resolveFilePath } from '../file';
+import { isTs, noCacheImport, noCacheImportTs, resolveFilePath } from '../file';
 import { resolve, dirname } from 'path';
 import { inject, injectable } from 'inversify';
 import type { I_ConfigLoader } from '../ConfigLoader';
@@ -35,24 +35,35 @@ export class ManifestLoader implements I_ManifestLoader {
     // Get manfest path\
     const resolvedManifestPath = resolveFilePath(this.manifestPath);
 
-    if (!await exists(resolvedManifestPath)) {
+    if (!(await exists(resolvedManifestPath))) {
       throw new Error(`The manifest does not exist "${this.manifestPath}".`);
     }
 
-    await noCacheImport<{ default: CrxmManifestImportantKeyRequired }>(resolvedManifestPath, dirname(resolvedManifestPath)).then(
-      (manifest) => {
-        const exportedManifest = manifest.default as CrxmManifestImportantKeyRequired;
+    let importManifest;
+    if (isTs(resolvedManifestPath)) {
+      importManifest = noCacheImportTs<{ default: CrxmManifestImportantKeyRequired }>(
+        resolvedManifestPath,
+        dirname(resolvedManifestPath),
+      );
+    } else {
+      importManifest = noCacheImport<{ default: CrxmManifestImportantKeyRequired }>(
+        resolvedManifestPath,
+        dirname(resolvedManifestPath),
+      );
+    }
 
-        if (exportedManifest === undefined) {
-          throw new Error(`The manifest is not exported as default in "${this.manifestPath}".`);
-        }
+    await importManifest.then((manifest) => {
+      const exportedManifest = manifest.default as CrxmManifestImportantKeyRequired;
 
-        if (exportedManifest === undefined) {
-          throw new Error(`The manifest is not exported as default in "${this.manifestPath}".`);
-        }
-        this.loadedManifest = exportedManifest;
-      },
-    );
+      if (exportedManifest === undefined) {
+        throw new Error(`The manifest is not exported as default in "${this.manifestPath}".`);
+      }
+
+      if (exportedManifest === undefined) {
+        throw new Error(`The manifest is not exported as default in "${this.manifestPath}".`);
+      }
+      this.loadedManifest = exportedManifest;
+    });
   }
 
   /**
