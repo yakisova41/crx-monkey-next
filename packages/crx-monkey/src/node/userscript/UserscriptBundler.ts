@@ -69,7 +69,10 @@ export class UserscriptBundler {
     }
 
 
-    window.__crxm__popup = {};
+    if(window.__crxm__popup === undefined) {
+      window.__crxm__popup = {};    
+    }
+
     window.__crxm__popup["${this.buildID}"] = () => {
       const popup = makePopupElement();
       document.body.appendChild(popup);
@@ -191,7 +194,7 @@ class UserJsPopupBlock extends Codeblock implements I_Codeblock {
     if (this.iswatch) {
       result += `\n// ${this.filePath}\n function ${this.funcName}() {\n${text}}\n`;
     } else {
-      result += `\n// ${this.filePath}\n function ${this.funcName}() {\n${text}}\nGM_registerMenuCommand("Open Popup", () => {unsafeWindow.__crxm__popup["${this.buildId}"]();\n});\n`;
+      result += `\n// ${this.filePath}\n function ${this.funcName}() {\n${text}}\n GM.registerMenuCommand("Open Popup", () => {unsafeWindow.__crxm__popup["${this.buildId}"]();\n}, '1');\n`;
     }
 
     return result;

@@ -57,7 +57,7 @@ export class CreateDevClient {
     const newFactory = new UserscriptHeaderFactory(this.headerFactory);
 
     // for loading code from server in development mode.
-    newFactory.push('@grant', 'GM_xmlhttpRequest');
+    newFactory.push('@grant', 'GM.xmlHttpRequest');
 
     const code = [
       newFactory.toString(),

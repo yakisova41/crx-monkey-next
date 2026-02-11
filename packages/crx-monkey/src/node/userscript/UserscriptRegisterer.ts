@@ -123,7 +123,7 @@ export class UserscriptRegisterer {
       config.popup_in_userscript &&
       this.manifestParser.parseResult.resources.htmlResources.popup.length !== 0
     ) {
-      userscriptHeaderFactory.push('@grant', 'GM_registerMenuCommand');
+      userscriptHeaderFactory.push('@grant', 'GM.registerMenuCommand');
       userscriptHeaderFactory.push('@grant', 'unsafeWindow');
     }
 

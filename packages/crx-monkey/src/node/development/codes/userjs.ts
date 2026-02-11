@@ -11,7 +11,7 @@ export function userjs(
   popup: boolean,
   trusted: boolean,
 ) {
-  unsafeWindow.__CRX_CONTENT_BUILD_ID = buildId;
+  const __crxm_build_id = buildId;
 
   if (!disableSock) {
     const websocket = new WebSocket(`ws://${host}:${websocketPort}`);
@@ -148,6 +148,9 @@ export function userjs(
             createScript: (input) => input,
           });
           scriptElem.text = policy.createScript(injectCode.toString());
+        } else {
+          // For firefox
+          scriptElem.textContent = injectCode;
         }
       } else {
         scriptElem.textContent = injectCode;
@@ -165,15 +168,12 @@ export function userjs(
    * Popup
    */
   if (popup) {
-    GM_registerMenuCommand(
+    GM.registerMenuCommand(
       'Open popup',
       () => {
         unsafeWindow.__crxm__popup[buildId]();
       },
-      {
-        accessKey: 'a',
-        autoClose: true,
-      },
+      '1',
     );
   }
 }
