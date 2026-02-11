@@ -1,4 +1,3 @@
-// @ts-check
 import { defineManifest } from '../packages/crx-monkey/dist/node/exports.js';
 
 export default defineManifest({

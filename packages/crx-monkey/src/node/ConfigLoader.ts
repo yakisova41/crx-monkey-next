@@ -1,4 +1,4 @@
-import { noCacheImport, resolveFilePath } from './file';
+import { isTs, noCacheImport, noCacheImportTs, resolveFilePath } from './file';
 import { CrxmConfigRequired } from 'src/node/typeDefs';
 import { injectable } from 'inversify';
 import { dirname } from 'path';
@@ -15,7 +15,7 @@ export interface I_ConfigLoader {
  */
 @injectable()
 export class ConfigLoader implements I_ConfigLoader {
-  public static configFileNamePatterns = ['crxm.config.js'];
+  public static configFileNamePatterns = ['crxm.config.js', 'crxm.config.ts'];
   private loadedConfig: CrxmConfigRequired | null = null;
   private configPath: string | null = null;
 
@@ -107,10 +107,19 @@ export class ConfigLoader implements I_ConfigLoader {
   private async loadConfigDetail(confPath: string) {
     const configAbsolutePath = resolveFilePath(confPath);
 
-    const buildConfig = await noCacheImport<{ default: CrxmConfigRequired }>(
-      configAbsolutePath,
-      dirname(configAbsolutePath),
-    );
+    let buildConfig;
+
+    if (isTs(configAbsolutePath)) {
+      buildConfig = await noCacheImportTs<{ default: CrxmConfigRequired }>(
+        configAbsolutePath,
+        dirname(configAbsolutePath),
+      );
+    } else {
+      buildConfig = await noCacheImport<{ default: CrxmConfigRequired }>(
+        configAbsolutePath,
+        dirname(configAbsolutePath),
+      );
+    }
 
     if (buildConfig.default === undefined) {
       throw new Error(`The config is not exported as default in "${configAbsolutePath}".`);
@@ -123,5 +132,15 @@ export class ConfigLoader implements I_ConfigLoader {
     }
     this.loadedConfig = exportedConfig;
     this.configPath = confPath;
+  }
+
+  /**
+   * Is typescript file
+   * @param filepath
+   * @returns
+   */
+  private isTs(filepath: string) {
+    const s = filepath.split('.');
+    return s[s.length - 1] === 'ts' ? true : false;
   }
 }
