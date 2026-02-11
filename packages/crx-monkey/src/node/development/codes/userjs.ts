@@ -148,6 +148,9 @@ export function userjs(
             createScript: (input) => input,
           });
           scriptElem.text = policy.createScript(injectCode.toString());
+        } else {
+          // For firefox
+          scriptElem.textContent = injectCode;
         }
       } else {
         scriptElem.textContent = injectCode;
@@ -165,15 +168,12 @@ export function userjs(
    * Popup
    */
   if (popup) {
-    GM_registerMenuCommand(
+    GM.registerMenuCommand(
       'Open popup',
       () => {
         unsafeWindow.__crxm__popup[buildId]();
       },
-      {
-        accessKey: 'a',
-        autoClose: true,
-      },
+      '1',
     );
   }
 }

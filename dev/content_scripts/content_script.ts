@@ -1,9 +1,9 @@
-import {message} from "../../packages/crx-monkey/dist/client/main"
+import {message, getRunningRuntime} from "../../packages/crx-monkey/dist/client/main"
 
 console.log("Content scripts is running.", "world: main")
 
-
-message.sendMessage({
+if(getRunningRuntime() === "Extension") {
+ message.sendMessage({
   "message": "Hello sw"
 }, {}, (response) => {
   console.log("Response recieved." , response)
@@ -13,3 +13,5 @@ message.sendMessage({
 message.addListener((request) => {
   console.log("Message recieved." , request)
 })
+ 
+}
