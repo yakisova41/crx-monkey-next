@@ -6,6 +6,7 @@ import {
 } from './typeDefs';
 import { tsBundler, tsBundlerWatch } from './plugins/tsBundler';
 import { sassBundler, sassBundlerWatch } from './plugins/sassBundler';
+import { htmlBundler, htmlBundlerWatch } from './plugins/htmlBundler/main';
 
 export { tsBundler, tsBundlerWatch };
 export { sassBundler, sassBundlerWatch };
@@ -32,6 +33,16 @@ export function defineConfig(userConfig: CrxmConfig): CrxmConfigRequired {
     build: {
       '^.*.(ts|js|tsx|jsx)$': tsBundler({}),
       '^.*.(css|sass|scss)$': sassBundler(),
+      '^.*.(html|htm)$': htmlBundler({
+        output: 'dist/chrome',
+        plugins: {
+          build: { '^.*.(ts|js|tsx|jsx)$': tsBundler(), '^.*.(css|sass|scss)$': sassBundler() },
+          watch: {
+            '^.*.(ts|js|tsx|jsx)$': tsBundlerWatch(),
+            '^.*.(css|sass|scss)$': sassBundlerWatch(),
+          },
+        },
+      }),
     },
     watch: {
       '^.*.(ts|js|tsx|jsx)$': tsBundlerWatch({
@@ -40,6 +51,16 @@ export function defineConfig(userConfig: CrxmConfig): CrxmConfigRequired {
         },
       }),
       '^.*.(css|sass|scss)$': sassBundlerWatch(),
+      '^.*.(html|htm)$': htmlBundlerWatch({
+        output: 'dist/chrome',
+        plugins: {
+          build: { '^.*.(ts|js|tsx|jsx)$': tsBundler(), '^.*.(css|sass|scss)$': sassBundler() },
+          watch: {
+            '^.*.(ts|js|tsx|jsx)$': tsBundlerWatch(),
+            '^.*.(css|sass|scss)$': sassBundlerWatch(),
+          },
+        },
+      }),
     },
     logLevel: 'error',
     public: false,
