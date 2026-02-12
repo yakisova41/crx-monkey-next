@@ -128,6 +128,7 @@ export function tsBundler(options: TsBundlerOptions = { esbuild: {} }): CrxmBund
           target: 'esnext',
           platform: 'browser',
           logLevel: 'error',
+          external: ['esbuild', 'esbuild/*', 'fs-extra', 'fs-extra/*', 'fs', 'path', 'crypto'],
           tsconfig: options.tsconfig,
 
           plugins: [
@@ -194,6 +195,7 @@ export function tsBundlerWatch(
         platform: 'browser',
         logLevel: 'error',
         tsconfig: options.tsconfig,
+        external: ['esbuild', 'esbuild/*', 'fs-extra', 'fs-extra/*', 'fs', 'path', 'crypto'],
         plugins: [
           ...(options.esbuild?.plugins !== undefined ? options.esbuild.plugins : []),
           ...(options.typeCheck ? [esbuildTypecheckPlugin(tsPluginOptions)] : []),
