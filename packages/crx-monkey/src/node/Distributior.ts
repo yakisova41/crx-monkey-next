@@ -520,9 +520,9 @@ export class Distributior {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         Object.entries(icons).map(async ([_key, { raw, path }]) => {
           const fileName = basename(path);
-          const output = resolve(distPath, `${this.publicDirInDist}/icons`, fileName);
+          const output = resolve(distPath, `${this.publicDirInDist}/icons/`, fileName);
           await fsExtra.copy(path, output);
-          this.manifestFactory.resolve(raw, `${this.publicDirInDist}/icons` + fileName);
+          this.manifestFactory.resolve(raw, `${this.publicDirInDist}/icons/` + fileName);
         }),
       );
     }
