@@ -526,15 +526,19 @@ export class Popup {
    * @param filePath
    * @returns
    */
-  private getAppropriatePlugin(filePath: string, type: 'watch' | 'build') {
+  private getAppropriatePlugin<T extends 'watch' | 'build'>(
+    filePath: string,
+    type: T,
+  ): { build: CrxmBundlerPlugin; watch: CrxmBundlerPluginWatch }[T] | null {
+    let _plugin = null;
     for (const [pattern, plugin] of Object.entries(this.plugins[type])) {
       const regex = new RegExp(pattern);
       if (regex.test(filePath)) {
-        return plugin;
+        _plugin = plugin;
       }
     }
 
-    return null;
+    return _plugin;
   }
 
   private changeExt(filePath: string, newExt: string) {

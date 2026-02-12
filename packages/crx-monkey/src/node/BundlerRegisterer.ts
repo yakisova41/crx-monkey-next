@@ -10,6 +10,7 @@ import chalk from 'chalk';
 import { Logger } from './Logger';
 import { Distributior } from './Distributior';
 import { Popup } from './popup/Popup';
+import { CrxmBundlerPlugin, CrxmBundlerPluginWatch } from './typeDefs';
 
 export interface I_BundlerRegisterer {}
 
@@ -52,8 +53,8 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     // Register sources to bundler without html.
     for (const [flag, paths] of addTargetGroups) {
       for (const path of paths) {
-        const buildPlugin = this.getAppropriateBuildPlugin(path);
-        const watchPlugin = this.getAppropriateWatchPlugin(path);
+        const buildPlugin = this.getAppropriatePlugin(path, 'build');
+        const watchPlugin = this.getAppropriatePlugin(path, 'watch');
 
         if (!buildPlugin) {
           console.error(`Could not find the appropriate plugin for building "${path}"`);
@@ -126,39 +127,21 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     }
   }
 
-  /**
-   * Get build plugin
-   * @param filePath
-   * @returns
-   */
-  private getAppropriateBuildPlugin(filePath: string) {
-    const { build } = this.configLoader.useConfig();
+  private getAppropriatePlugin<T extends 'watch' | 'build'>(
+    filePath: string,
+    type: T,
+  ): { build: CrxmBundlerPlugin; watch: CrxmBundlerPluginWatch }[T] | null {
+    const { build, watch } = this.configLoader.useConfig();
 
-    for (const [pattern, plugin] of Object.entries(build)) {
+    let _plugin = null;
+    for (const [pattern, plugin] of Object.entries({ build, watch }[type])) {
       const regex = new RegExp(pattern);
       if (regex.test(filePath)) {
-        return plugin;
+        _plugin = plugin;
       }
     }
 
-    return null;
-  }
-
-  /**
-   * Get watch plugin
-   * @param filePath
-   * @returns
-   */
-  private getAppropriateWatchPlugin(filePath: string) {
-    const { watch } = this.configLoader.useConfig();
-    for (const [pattern, plugin] of Object.entries(watch)) {
-      const regex = new RegExp(pattern);
-      if (regex.test(filePath)) {
-        return plugin;
-      }
-    }
-
-    return null;
+    return _plugin;
   }
 
   /**
