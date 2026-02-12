@@ -294,7 +294,7 @@ export class Popup {
 
       ...this.diff.srcFiles.delete.map(async (filePath: string) => {
         const baseFileName = basename(filePath);
-        const absolutedNewFilePath = resolve(this.outputDir, 'assets', baseFileName);
+        const absolutedNewFilePath = resolve(this.outputDir, 'public', baseFileName);
 
         await fse.remove(absolutedNewFilePath);
       }),
