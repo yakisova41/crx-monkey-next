@@ -273,8 +273,8 @@ export class Popup {
     await Promise.all([
       ...this.diff.srcFiles.add.map(async (filePath: string) => {
         const baseFileName = basename(filePath);
-        const newFilePath = '/assets/' + baseFileName;
-        const absolutedNewFilePath = resolve(this.outputDir, 'assets', baseFileName);
+        const newFilePath = '/public/' + baseFileName;
+        const absolutedNewFilePath = resolve(this.outputDir, 'public', baseFileName);
 
         // unlink
         if (await fse.exists(absolutedNewFilePath)) {

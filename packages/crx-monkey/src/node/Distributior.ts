@@ -24,6 +24,8 @@ export class Distributior {
     popup: [],
   };
 
+  public publicDirInDist = 'public';
+
   constructor(
     @inject(TYPES.CrxmBundler) private readonly bundler: CrxmBundler,
     @inject(TYPES.ManifestLoader) private readonly manifestLoader: ManifestLoader,
@@ -504,7 +506,7 @@ export class Distributior {
     const { public: publicDir } = this.configLoader.useConfig();
 
     if (publicDir !== undefined && publicDir !== false) {
-      await fsExtra.copy(publicDir, resolve(distPath, 'public'), {
+      await fsExtra.copy(publicDir, resolve(distPath, this.publicDirInDist), {
         overwrite: true,
       });
     }
@@ -518,9 +520,9 @@ export class Distributior {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         Object.entries(icons).map(async ([_key, { raw, path }]) => {
           const fileName = basename(path);
-          const output = resolve(distPath, 'assets/icons', fileName);
+          const output = resolve(distPath, `${this.publicDirInDist}/icons`, fileName);
           await fsExtra.copy(path, output);
-          this.manifestFactory.resolve(raw, 'assets/icons/' + fileName);
+          this.manifestFactory.resolve(raw, `${this.publicDirInDist}/icons` + fileName);
         }),
       );
     }
