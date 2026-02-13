@@ -344,12 +344,13 @@ export class Popup {
 
       const decoder = new TextDecoder();
       const resultStr = decoder.decode(result);
+      const escaped = resultStr.replaceAll('`', '\\`');
 
       if (target.flag === 'html_script') {
         const nodes = parser.querySelectorAll(`script[src="${entry}"]`);
         nodes.forEach((node) => {
           node.removeAttribute('src');
-          node.innerHTML = resultStr;
+          node.innerHTML = escaped;
         });
       }
 
