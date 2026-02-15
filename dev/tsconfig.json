@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "jsx": "react-jsx",
     "target": "ES2022",
     "allowJs": false,
     "skipLibCheck": true,
@@ -12,7 +13,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "baseUrl": ".",
-    "types": ["chrome"]
+    "types": ["chrome", "react"]
   },
   "include": ["content_scripts", "sw", "popup"]
 }

@@ -14,6 +14,17 @@ export class SockServer {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private listeners: SockServerLisntener<any>[] = [];
 
+  private _host: string;
+  private _port: number;
+
+  public get host() {
+    return this._host;
+  }
+
+  public get port() {
+    return this._port;
+  }
+
   /**
    * Start and setup server.
    * @param host
@@ -27,10 +38,17 @@ export class SockServer {
       server: { host, websocket },
     } = this.configLoader.useConfig();
 
+    if (host === undefined || websocket === undefined) {
+      throw new Error('host or port was undefined');
+    }
+
     this.wserver = new WebSocketServer({
       port: websocket,
       host: host,
     });
+
+    this._host = host;
+    this._port = websocket;
 
     //this.setup();
   }
@@ -72,11 +90,11 @@ export class SockServer {
    * Send reload signal to websocket client.
    * @param token
    */
-  public reload(token: ReloadTokens) {
+  public reload<T>(token: ReloadTokens, data?: T | undefined) {
     this.wserver.clients.forEach((client) => {
-      this.sendMsg<SockServerResponseReload>(client, {
+      this.sendMsg<SockServerResponseReload | SockServerResponseHMRReload>(client, {
         type: 'reload',
-        content: token,
+        content: { reloadType: token, data },
       });
     });
 
@@ -102,15 +120,22 @@ export interface SockServerResponseConnected extends SockServerResponseContent {
 
 export interface SockServerResponseReload extends SockServerResponseContent {
   type: 'reload';
-  content: ReloadTokens;
+  content: { reloadType: ReloadTokens; data: undefined | unknown };
 }
+
+export interface SockServerResponseHMRReload extends SockServerResponseContent {
+  type: 'reload';
+  content: { reloadType: `HMR_${string}`; data: { js: string } };
+}
+
 export type ReloadTokens =
   | 'RELOAD_CONTENT_SCRIPT'
   | 'RELOAD_CSS'
   | 'RELOAD_SW'
   | 'RELOAD_POPUP_JS'
   | 'RELOAD_POPUP_HTML'
-  | 'ALL';
+  | 'ALL'
+  | string;
 
 export interface SockServerResponse<T extends SockServerResponseContent> {
   type: T['type'];

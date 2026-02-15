@@ -1,6 +1,6 @@
 import { inject, injectable } from 'inversify';
 import { getMessage } from './i18n';
-import type { CrxmManifestImportantKeys } from 'src/node/typeDefs';
+import type { CrxmManifest, CrxmManifestImportantKeys } from 'src/node/typeDefs';
 import { TYPES } from '../types';
 import { ManifestLoader } from './ManifestLoader';
 
@@ -10,7 +10,7 @@ import { ManifestLoader } from './ManifestLoader';
 @injectable()
 export class ManifestFactory {
   public rawManifest: CrxmManifestImportantKeys;
-  private workspace: CrxmManifestImportantKeys;
+  private workspace: CrxmManifest;
   private definedCustomKeysByCrxMonkeyInContentScrpt: string[] = [
     'use_isolated_connection',
     'userscript_direct_inject',
@@ -145,7 +145,7 @@ export class ManifestFactory {
     }
   }
 
-  private absorbCustomKeys(original: CrxmManifestImportantKeys) {
+  private absorbCustomKeys(original: CrxmManifest) {
     const result = structuredClone(original);
 
     if (original.content_scripts !== undefined && result.content_scripts !== undefined) {
@@ -161,5 +161,15 @@ export class ManifestFactory {
     }
 
     return result;
+  }
+
+  public setCsp(value: string) {
+    if (this.workspace.content_security_policy === undefined) {
+      this.workspace.content_security_policy = {
+        extension_pages: value,
+      };
+    } else {
+      this.workspace.content_security_policy.extension_pages = value;
+    }
   }
 }

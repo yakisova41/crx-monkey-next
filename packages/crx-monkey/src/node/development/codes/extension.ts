@@ -24,7 +24,7 @@ export function developmentContentScript(
     const response = JSON.parse(data) as SockServerResponse<SockServerResponseReload>;
 
     if (response.type === 'reload') {
-      switch (response.content) {
+      switch (response.content.reloadType) {
         case 'RELOAD_CSS':
         case 'RELOAD_CONTENT_SCRIPT':
           setTimeout(() => {

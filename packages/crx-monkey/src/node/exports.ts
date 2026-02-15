@@ -7,9 +7,11 @@ import {
 import { tsBundler, tsBundlerWatch } from './plugins/tsBundler';
 import { sassBundler, sassBundlerWatch } from './plugins/sassBundler';
 import { htmlBundler, htmlBundlerWatch } from './plugins/htmlBundler/main';
+import { reactWatch } from './plugins/react/react';
 
 export { tsBundler, tsBundlerWatch };
 export { sassBundler, sassBundlerWatch };
+export { reactWatch };
 
 /**
  * Define config for crx monkey.

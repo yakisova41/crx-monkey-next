@@ -21,4 +21,5 @@ export const TYPES = {
   BuildID: Symbol.for('BuildID'),
   CacheDir: Symbol.for('CacheDir'),
   IsWatch: Symbol.for('IsWatch'),
+  Hmr: Symbol.for('Hmr'),
 };
