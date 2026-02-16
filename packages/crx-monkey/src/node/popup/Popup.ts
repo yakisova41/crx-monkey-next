@@ -31,6 +31,7 @@ export class Popup {
   };
   private entry: null | string = null;
   private diff: null | Diff = null;
+  private scriptReplaces: string[] = [];
 
   constructor(
     @inject(TYPES.CrxmBundler) private readonly bundler: CrxmBundler,
@@ -149,7 +150,8 @@ export class Popup {
 
     const data = this.parser.userjs.toString();
 
-    return data;
+    const replaced = this.replaceRealScript(data);
+    return replaced;
   }
 
   /**
@@ -205,55 +207,6 @@ export class Popup {
         },
       };
     });
-  }
-
-  /**
-   * Output resources used in the extension popup
-   */
-  private async outputExtensionResources() {
-    await Promise.all(
-      this.syncResults.map(async ({ hash, entry }) => {
-        const target = this.bundler.targets[hash];
-        let result = this.bundler.compileResults[hash];
-
-        if (result === undefined) {
-          await this.bundler.compileForce(hash);
-          result = this.bundler.compileResults[hash];
-
-          if (result === undefined) {
-            throw new Error(
-              `The result of "${hash}" is undefined.\nEntryPoint: "${target.entryPoint}"`,
-            );
-          }
-        }
-
-        if (target.flag === 'html_script' || target.flag === 'html_href') {
-          const extChanged =
-            target.flag === 'html_script'
-              ? this.changeExt(target.entryPoint, 'js')
-              : this.changeExt(target.entryPoint, 'css');
-
-          const endemicHash = MurmurHash3.x86.hash32(target.entryPoint).toString();
-
-          const fileName = endemicHash + '_' + extChanged;
-
-          const outputPath = resolve(this.outputDir, fileName);
-
-          await fse.outputFile(outputPath, result);
-
-          this.logger.dispatchDebug(
-            `👋 An asset loaded by popup has been outputed. ${chalk.gray(`"${target.entryPoint}" -> "${outputPath}"`)}`,
-          );
-
-          if (target.flag === 'html_script') {
-            this.resolveAttr(entry, fileName, 'script', 'src', this.parser.extension);
-          } else {
-            this.resolveAttr(entry, fileName, 'link', 'href', this.parser.extension);
-            this.resolveAttr(entry, fileName, 'a', 'href', this.parser.extension);
-          }
-        }
-      }),
-    );
   }
 
   /**
@@ -332,6 +285,33 @@ export class Popup {
     );
   }
 
+  /**
+   * After inlining the HTML using this.resolveInline(),
+   * replaces the inline script placeholders
+   * `__CRXM_REPLACED_SCRIPT_${index}` with their corresponding
+   * stored bundle outputs.
+   *
+   * Since node-html-parser cannot correctly handle inline
+   * script contents, this method performs the replacement
+   * via external string manipulation after the parser has
+   * completed all DOM operations.
+   */
+  private replaceRealScript(rawScript: string) {
+    this.scriptReplaces.forEach((scriptStr, i) => {
+      rawScript = rawScript.replace(`__CRXM_REPLACED_SCRIPT_${i}`, scriptStr);
+    });
+
+    return rawScript;
+  }
+
+  /**
+   * Inlines the CSS files referenced in the HTML.
+   *
+   * For each script element that loads an external script,
+   * replaces its inner content with the placeholder string
+   * `__CRXM_REPLACED_SCRIPT_${index}`, and stores the bundled
+   * result of that script using the corresponding index.
+   */
   private resolveInline() {
     const parser = this.parser?.userjs;
     if (parser === undefined) {
@@ -346,14 +326,16 @@ export class Popup {
       const resultStr = decoder.decode(result);
       const escaped = resultStr
         .replaceAll('\\', '\\\\')
-        .replaceAll('`', '\\` ')
+        .replaceAll('`', '\\`')
         .replaceAll('$', '\\$');
 
       if (target.flag === 'html_script') {
         const nodes = parser.querySelectorAll(`script[src="${entry}"]`);
+        const i = this.scriptReplaces.length;
+        this.scriptReplaces[i] = escaped;
         nodes.forEach((node) => {
           node.removeAttribute('src');
-          node.innerHTML = escaped;
+          node.set_content(`__CRXM_REPLACED_SCRIPT_${i}`);
         });
       }
 
