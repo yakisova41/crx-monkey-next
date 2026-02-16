@@ -10,7 +10,7 @@ import chalk from 'chalk';
  */
 @injectable()
 export class SockServer {
-  private readonly wserver: WebSocketServer;
+  private wserver: WebSocketServer | null = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private listeners: SockServerLisntener<any>[] = [];
 
@@ -42,11 +42,6 @@ export class SockServer {
       throw new Error('host or port was undefined');
     }
 
-    this.wserver = new WebSocketServer({
-      port: websocket,
-      host: host,
-    });
-
     this._host = host;
     this._port = websocket;
 
@@ -65,6 +60,11 @@ export class SockServer {
   }
 
   public setup() {
+    this.wserver = new WebSocketServer({
+      port: this._port,
+      host: this._host,
+    });
+
     this.wserver.addListener('connection', (socket) => {
       this.sendMsg<SockServerResponseConnected>(socket, {
         type: 'connected',
@@ -91,6 +91,10 @@ export class SockServer {
    * @param token
    */
   public reload<T>(token: ReloadTokens, data?: T | undefined) {
+    if (this.wserver === null) {
+      throw new Error('Websocket server has never been setuped');
+    }
+
     this.wserver.clients.forEach((client) => {
       this.sendMsg<SockServerResponseReload | SockServerResponseHMRReload>(client, {
         type: 'reload',
@@ -109,6 +113,9 @@ export class SockServer {
   }
 
   public dispose() {
+    if (this.wserver === null) {
+      throw new Error('Websocket server has never been setuped');
+    }
     this.wserver.close();
   }
 }
