@@ -10,5 +10,9 @@
     "build": "node ../packages/crx-monkey/bin/crx-monkey build"
   },
   "type": "module",
-  "dependencies": {}
+  "dependencies": {
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  }
 }

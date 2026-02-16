@@ -14,6 +14,7 @@ import {
 } from 'src/node/typeDefs';
 import chalk from 'chalk';
 import { Logger } from './Logger';
+import { HMR } from './Hmr';
 
 /**
  * Manage all bundler
@@ -28,7 +29,12 @@ export class CrxmBundler implements I_CrxmBundler {
   constructor(
     @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
     @inject(TYPES.Logger) private readonly logger: Logger,
+    @inject(TYPES.Hmr) private readonly _hmr: HMR,
   ) {}
+
+  public get hmr() {
+    return this._hmr;
+  }
 
   public get compileResults() {
     return this._compileResults;

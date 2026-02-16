@@ -122,11 +122,10 @@ export interface UserScriptHeaderProps {
 export interface CrxmManifest extends chrome.runtime.ManifestV3 {
   content_scripts?: CrxmContentScripts;
 }
-
 export interface CrxmManifestImportantKeys {
   description: string;
   content_scripts: CrxmContentScripts;
-  background: { service_worker: string; type: string } | undefined;
+  background: { service_worker: string; type: 'module' | undefined } | undefined;
   name: string;
   version: string;
   manifest_version: 3;
@@ -134,9 +133,9 @@ export interface CrxmManifestImportantKeys {
     | {
         default_icon:
           | {
-              '16'?: string;
-              '24'?: string;
-              '32'?: string;
+              16: string;
+              24: string;
+              32: string;
             }
           | undefined;
         default_title?: string;
@@ -181,7 +180,15 @@ export type BuildTarget = {
 
 export type ScriptUpdateHandler = (target: BuildTarget) => unknown;
 
+export interface I_HMR {
+  enable(): void;
+  dispatchResult(entry: string, buildResult: Uint8Array): Promise<void>;
+  getCacheFileName(entry: string): string;
+  websocketAddress: `ws://${string}:${string}`;
+}
+
 export interface I_CrxmBundler {
+  hmr: I_HMR;
   compileResults: Record<string, Uint8Array>;
   addTarget(
     entryPoint: string,

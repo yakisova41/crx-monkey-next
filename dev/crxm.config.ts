@@ -1,4 +1,8 @@
-import { defineConfig } from '../packages/crx-monkey/dist/node/exports.js';
+import {
+  defineConfig,
+  reactWatch,
+  tsBundlerWatch,
+} from '../packages/crx-monkey/dist/node/exports.js';
 
 const config = defineConfig({
   server: {},
@@ -7,5 +11,9 @@ const config = defineConfig({
   logLevel: 'info',
   popup_in_userscript: true,
   manifest: './manifest.ts',
+  watch: {
+    '\\.(ts|js)x$': reactWatch(),
+    '\\.(ts|js)$': tsBundlerWatch(),
+  },
 });
 export default config;

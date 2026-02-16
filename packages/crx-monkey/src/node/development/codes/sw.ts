@@ -13,7 +13,7 @@ export function developSw(host: string, sockPort: number) {
       const response = JSON.parse(data) as SockServerResponse<SockServerResponseReload>;
 
       if (response.type === 'reload') {
-        switch (response.content) {
+        switch (response.content.reloadType) {
           case 'RELOAD_CONTENT_SCRIPT':
           case 'RELOAD_SW':
           case 'RELOAD_CSS':

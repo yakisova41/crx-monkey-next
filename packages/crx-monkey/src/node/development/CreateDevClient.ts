@@ -10,6 +10,7 @@ import { developmentContentScript } from './codes/extension';
 import fsExtra from 'fs-extra/esm';
 import { ManifestFactory } from '../manifest/ManifestFactory';
 import type { I_ManifestParser } from '../manifest/ManifestParser';
+import { stringifyFunction } from '../utils';
 
 @injectable()
 export class CreateDevClient {
@@ -108,29 +109,4 @@ export class CreateDevClient {
       'ISOLATED',
     );
   }
-}
-
-/**
- * Stringify a function that binded args.
- * @param target function
- * @param args args
- * @returns A function stringified.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function stringifyFunction<V extends (...args: any[]) => any>(
-  target: V,
-  args: Parameters<V>,
-): string {
-  const raw = target.toString();
-
-  const newArgs = args.map((arg) => {
-    if (typeof arg === 'string') {
-      return `'${arg}'`;
-    } else {
-      return String(arg);
-    }
-  });
-
-  const code = `(${raw})(${newArgs.join(', ')});`;
-  return code;
 }

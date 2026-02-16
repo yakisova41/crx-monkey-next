@@ -17,6 +17,7 @@ import { SockServer } from './server/SockServer';
 import { CreateDevClient } from './development/CreateDevClient';
 import { FileServer } from './server/FileServer';
 import { Popup } from './popup/Popup';
+import { HMR } from './Hmr';
 
 /**
  * DI container
@@ -50,7 +51,7 @@ container
 container.bind<SockServer>(TYPES.SockServer).to(SockServer).inSingletonScope();
 container.bind<CreateDevClient>(TYPES.CreateDevClient).to(CreateDevClient).inSingletonScope();
 container.bind<FileServer>(TYPES.FileServer).to(FileServer).inSingletonScope();
-
+container.bind<HMR>(TYPES.Hmr).to(HMR).inSingletonScope();
 /**
  * Values
  */

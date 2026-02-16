@@ -1,4 +1,8 @@
-import { SockServerConsoleRecieved } from 'src/node/server/SockServer';
+import {
+  SockServerConsoleRecieved,
+  SockServerResponse,
+  SockServerResponseReload,
+} from 'src/node/server/SockServer';
 import { IsolatedConnectorEvent } from './extension';
 
 export function userjs(
@@ -17,10 +21,10 @@ export function userjs(
     const websocket = new WebSocket(`ws://${host}:${websocketPort}`);
 
     websocket.addEventListener('message', ({ data }) => {
-      const { type, content } = JSON.parse(data);
+      const { type, content } = JSON.parse(data) as SockServerResponse<SockServerResponseReload>;
 
       if (type === 'reload') {
-        switch (content) {
+        switch (content.reloadType) {
           case 'RELOAD_CSS':
           case 'RELOAD_CONTENT_SCRIPT':
             console.log('[crxm] reloading...');

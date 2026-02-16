@@ -10,11 +10,12 @@ import MurmurHash3 from 'murmurhash3js';
 import fsExtra from 'fs-extra';
 import { UserscriptBundler } from './userscript/UserscriptBundler';
 import prettier from 'prettier';
-import { CreateDevClient, stringifyFunction } from './development/CreateDevClient';
+import { CreateDevClient } from './development/CreateDevClient';
 import { isolatedConnector } from './isolatedConnector';
 import { Logger } from './Logger';
 import chalk from 'chalk';
 import { Popup } from './popup/Popup';
+import { stringifyFunction } from './utils';
 
 @injectable()
 export class Distributior {
