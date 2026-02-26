@@ -85,7 +85,7 @@ export class Popup {
     }
   }
 
-  public async refreshParser() {
+  public async refreshExtensionParser() {
     if (this.entry === null) {
       throw new Error('The HTML entry is null. Is it registered?');
     }

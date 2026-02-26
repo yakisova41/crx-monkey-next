@@ -215,6 +215,8 @@ export class Distributior {
   }
 
   private async outputChromePopup(distFilepath: string) {
+    await this.popup.refreshExtensionParser();
+
     // Output Resources
     const resources = await this.popup.getExtensionResources();
 
@@ -476,7 +478,6 @@ export class Distributior {
 
       const html = await this.popup.getHtmlInlined();
       const popupHtmlPath = popup[0];
-
       this.userscriptBundler.addPopup(popupHtmlPath, html);
     }
 

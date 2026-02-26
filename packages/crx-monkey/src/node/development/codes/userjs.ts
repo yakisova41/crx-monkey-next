@@ -27,6 +27,9 @@ export function userjs(
         switch (content.reloadType) {
           case 'RELOAD_CSS':
           case 'RELOAD_CONTENT_SCRIPT':
+          case 'RELOAD_POPUP_HTML':
+          case 'RELOAD_POPUP_JS':
+          case 'ALL':
             console.log('[crxm] reloading...');
             location.reload();
 

@@ -125,7 +125,7 @@ export async function dev() {
     } else if (target.flag === 'html_script') {
       await distributior.dist(target.entryPoint, 'popup');
       sockServer.reload('RELOAD_POPUP_JS');
-    } else if (target.flag === 'html' || target.flag === 'html_css') {
+    } else if (target.flag === 'html' || target.flag === 'html_href') {
       await distributior.dist(target.entryPoint, 'popup');
       sockServer.reload('RELOAD_POPUP_HTML');
     } else {

@@ -3,6 +3,7 @@ import {
   SockServerResponse,
   SockServerResponseContent,
   SockServerResponseHMRReload,
+  SockServerResponseReload,
   SockServerResponseSendResult,
 } from 'src/node/server/SockServer';
 
@@ -51,7 +52,9 @@ export async function developmentReact(
     }
 
     if (response.type === 'reload') {
-      if (response.content.reloadType === 'HMR_' + entryPoint) {
+      const data = response as SockServerResponseReload;
+
+      if (data.content.reloadType === 'HMR_' + entryPoint) {
         const {
           content: {
             data: { js, fileName },

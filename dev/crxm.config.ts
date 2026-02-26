@@ -8,7 +8,6 @@ const config = defineConfig({
   server: {},
   public: './public',
   header: [['@author', 'developer']],
-  logLevel: 'info',
   popup_in_userscript: true,
   manifest: './manifest.ts',
   watch: {
