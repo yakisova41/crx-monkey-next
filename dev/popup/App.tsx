@@ -1,4 +1,5 @@
 import {  useState } from "react"
+import "./popup.css"
 
 export default function App() {
     const [count , setCount] = useState(0);

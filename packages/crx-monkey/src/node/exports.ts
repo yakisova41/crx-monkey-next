@@ -8,10 +8,11 @@ import { tsBundler, tsBundlerWatch } from './plugins/tsBundler';
 import { sassBundler, sassBundlerWatch } from './plugins/sassBundler';
 import { htmlBundler, htmlBundlerWatch } from './plugins/htmlBundler';
 import { reactWatch } from './plugins/react/react';
-
+import { esbuildCSSPlugin } from './plugins/esbuildCSSPlugin';
 export { tsBundler, tsBundlerWatch };
 export { sassBundler, sassBundlerWatch };
 export { reactWatch };
+export { esbuildCSSPlugin };
 
 /**
  * Define config for crx monkey.
