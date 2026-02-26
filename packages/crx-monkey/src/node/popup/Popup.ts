@@ -452,8 +452,8 @@ export class Popup {
     this.bundler.addTarget(
       htmlEntry,
       {
-        build: htmlBundler,
-        watch: htmlBundlerWatch,
+        build: htmlBundler(),
+        watch: htmlBundlerWatch(),
       },
       'html',
     );

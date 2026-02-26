@@ -9,35 +9,29 @@ import { watch, readFile } from 'fs';
  * Instead, the HTML is now processed internally via popup/Popup.ts.
  */
 
-export const htmlBundler: CrxmBundlerPlugin = {
-  name: 'HTML File loader',
-  plugin: async (filePath) => {
-    return new Promise((resolve, reject) => {
-      readFile(filePath, (err, data) => {
-        if (err !== null) {
-          reject(err);
-        } else {
-          resolve(data);
-        }
+export function htmlBundler(): CrxmBundlerPlugin {
+  return {
+    name: 'HTML File loader',
+    plugin: async (filePath) => {
+      return new Promise((resolve, reject) => {
+        readFile(filePath, (err, data) => {
+          if (err !== null) {
+            reject(err);
+          } else {
+            resolve(data);
+          }
+        });
       });
-    });
-  },
-};
+    },
+  };
+}
 
-export const htmlBundlerWatch: CrxmBundlerPluginWatch = {
-  name: 'HTML File loader watch',
-  plugin: async (filePath, sendResult) => {
-    const watcher = watch(filePath);
+export function htmlBundlerWatch(): CrxmBundlerPluginWatch {
+  return {
+    name: 'HTML File loader watch',
+    plugin: async (filePath, sendResult) => {
+      const watcher = watch(filePath);
 
-    readFile(filePath, (err, data) => {
-      if (err !== null) {
-        throw err;
-      } else {
-        sendResult(data);
-      }
-    });
-
-    watcher.addListener('change', async () => {
       readFile(filePath, (err, data) => {
         if (err !== null) {
           throw err;
@@ -45,12 +39,22 @@ export const htmlBundlerWatch: CrxmBundlerPluginWatch = {
           sendResult(data);
         }
       });
-    });
 
-    return {
-      stop: async () => {
-        watcher.close();
-      },
-    };
-  },
-};
+      watcher.addListener('change', async () => {
+        readFile(filePath, (err, data) => {
+          if (err !== null) {
+            throw err;
+          } else {
+            sendResult(data);
+          }
+        });
+      });
+
+      return {
+        stop: async () => {
+          watcher.close();
+        },
+      };
+    },
+  };
+}

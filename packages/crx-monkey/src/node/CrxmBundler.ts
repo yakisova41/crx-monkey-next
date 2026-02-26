@@ -154,8 +154,6 @@ export class CrxmBundler implements I_CrxmBundler {
           const newHashs = notSucceedFirstBuildHashs.filter((h) => h !== hash);
           notSucceedFirstBuildHashs = newHashs;
 
-          this.hmr.dispatchResult(filePath.entryPoint, result);
-
           if (notSucceedFirstBuildHashs.length == 0) {
             // All watch target's first build succeed!
             resolve(1);
@@ -194,6 +192,10 @@ export class CrxmBundler implements I_CrxmBundler {
           onEndFirstBuild(result);
         }
       };
+
+      if (typeof plugin !== 'function') {
+        throw new Error(`Plugin "${name}" is not function.`);
+      }
 
       const watcher = await plugin(absolutePath, resultSender, this);
       this.watchers.push(watcher);
