@@ -1,9 +1,11 @@
 import { inject, injectable } from 'inversify';
 import { TYPES } from './types';
-import { SockServer } from './server/SockServer';
-import { FileServer } from './server/FileServer';
+import {
+  SockServer,
+  SockServerRequestSendResult,
+  SockServerResponseSendResult,
+} from './server/SockServer';
 import { I_HMR } from './typeDefs';
-import { ManifestFactory } from './manifest/ManifestFactory';
 import { ConfigLoader } from './ConfigLoader';
 import fse from 'fs-extra';
 import { resolve } from 'path';
@@ -11,15 +13,40 @@ import MurmurHash3 from 'murmurhash3js';
 
 @injectable()
 export class HMR implements I_HMR {
+  // Record<entryPoint, buildResult>
+  private storedResults: Record<string, Uint8Array> = {};
+
   constructor(
     @inject(TYPES.SockServer) private sockServer: SockServer,
-    @inject(TYPES.FileServer) private fileServer: FileServer,
-    @inject(TYPES.ManifestFactory) private manifestFactory: ManifestFactory,
     @inject(TYPES.ConfigLoader) private configLoader: ConfigLoader,
   ) {}
 
-  public enable() {
-    this.manifestFactory.setCsp("script-src 'self'; script-src-elem 'self'");
+  public setup() {
+    this.sockServer.addMsgListener((msg, sendResponse) => {
+      if (msg.type === 'request_result') {
+        // A HMR client requests being sent the build result.
+        const {
+          content: { entryPoint },
+        } = msg as SockServerRequestSendResult;
+
+        if (this.storedResults[entryPoint] === undefined) {
+          throw new Error(`The build result of "${entryPoint}" does not found`);
+        }
+
+        const decoder = new TextDecoder();
+        const text = decoder.decode(this.storedResults[entryPoint]);
+
+        // Response build result to client
+        const response: SockServerResponseSendResult = {
+          type: 'request_result_response',
+          content: {
+            js: text,
+          },
+        };
+
+        sendResponse(response);
+      }
+    });
   }
 
   public async dispatchResult(entry: string, buildResult: Uint8Array) {
@@ -33,10 +60,16 @@ export class HMR implements I_HMR {
 
     const cacheFileName = this.getCacheFileName(entry);
 
-    await fse.outputFile(resolve(chrome, cacheFileName), buildResult);
+    const decoder = new TextDecoder();
+    const decodedResult = decoder.decode(buildResult);
+
+    this.storedResults[entry] = buildResult;
+
+    await fse.outputFile(resolve(chrome, cacheFileName), decodedResult);
 
     this.sockServer.reload('HMR_' + entry, {
-      js: cacheFileName,
+      js: decodedResult,
+      fileName: cacheFileName,
     });
   }
 

@@ -16,6 +16,7 @@ import { CreateDevClient } from './development/CreateDevClient';
 import { FileServer } from './server/FileServer';
 import { copyLocales } from './manifest/i18n';
 import chalk from 'chalk';
+import { I_HMR } from './typeDefs';
 
 /**
  * Start develop mode.
@@ -52,6 +53,7 @@ export async function dev() {
   );
   const userscriptBundler = container.get<UserscriptBundler>(TYPES.UserscriptBundler);
   const sockServer = container.get<SockServer>(TYPES.SockServer);
+  const hmr = container.get<I_HMR>(TYPES.Hmr);
   const createDevClient = container.get<CreateDevClient>(TYPES.CreateDevClient);
   const fileServer = container.get<FileServer>(TYPES.FileServer);
 
@@ -62,6 +64,8 @@ export async function dev() {
   // The websocket server for hotreload.
   sockServer.setup();
   fileServer.start();
+
+  hmr.setup();
 
   // Register all build targets for bundler from manifest.
   await registerer.registerAll();

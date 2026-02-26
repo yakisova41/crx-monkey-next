@@ -150,9 +150,11 @@ export class CrxmBundler implements I_CrxmBundler {
         const filePath = absolutePaths[hash];
         this.logger.dispatchDebug(filePath);
 
-        const onEndFirstBuild = () => {
+        const onEndFirstBuild = (result: Uint8Array) => {
           const newHashs = notSucceedFirstBuildHashs.filter((h) => h !== hash);
           notSucceedFirstBuildHashs = newHashs;
+
+          this.hmr.dispatchResult(filePath.entryPoint, result);
 
           if (notSucceedFirstBuildHashs.length == 0) {
             // All watch target's first build succeed!
@@ -165,10 +167,10 @@ export class CrxmBundler implements I_CrxmBundler {
     });
   }
 
-  private async watchFile(hash: string, onEndFirstBuild: () => void) {
+  private async watchFile(hash: string, onEndFirstBuild: (result: Uint8Array) => void) {
     const absolutePaths = await this.getTargetAbsolutePaths();
 
-    const absolutePath = resolveFilePath(absolutePaths[hash]);
+    const absolutePath = resolveFilePath(absolutePaths[hash].absolute);
     const { usingPlugin } = this._targets[hash];
 
     if (await fse.exists(absolutePath)) {
@@ -189,7 +191,7 @@ export class CrxmBundler implements I_CrxmBundler {
 
         if (isFirst) {
           isFirst = false;
-          onEndFirstBuild();
+          onEndFirstBuild(result);
         }
       };
 
@@ -213,7 +215,7 @@ export class CrxmBundler implements I_CrxmBundler {
 
     const absolutePaths = await this.getTargetAbsolutePaths();
 
-    const absolutePath = resolveFilePath(absolutePaths[hash]);
+    const absolutePath = resolveFilePath(absolutePaths[hash].absolute);
 
     this._compileResults[hash] = await target.usingPlugin.build.plugin(absolutePath, this);
     return target;
@@ -229,7 +231,7 @@ export class CrxmBundler implements I_CrxmBundler {
 
     await Promise.all(
       Object.keys(absolutePaths).map(async (hash) => {
-        const absolutePath = resolveFilePath(absolutePaths[hash]);
+        const absolutePath = resolveFilePath(absolutePaths[hash].absolute);
         const { usingPlugin } = this._targets[hash];
 
         if (await fse.exists(absolutePath)) {
@@ -253,10 +255,10 @@ export class CrxmBundler implements I_CrxmBundler {
     const path = this.configLoader.useConfigPath();
     const projectDir = dirname(path);
 
-    const paths: Record<string, string> = {};
+    const paths: Record<string, { entryPoint: string; absolute: string }> = {};
     Object.keys(this._targets).map((hash) => {
       const { entryPoint } = this._targets[hash];
-      paths[hash] = resolve(projectDir, entryPoint);
+      paths[hash] = { absolute: resolve(projectDir, entryPoint), entryPoint };
     });
 
     return paths;

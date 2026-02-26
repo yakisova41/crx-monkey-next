@@ -181,7 +181,7 @@ export type BuildTarget = {
 export type ScriptUpdateHandler = (target: BuildTarget) => unknown;
 
 export interface I_HMR {
-  enable(): void;
+  setup: () => void;
   dispatchResult(entry: string, buildResult: Uint8Array): Promise<void>;
   getCacheFileName(entry: string): string;
   websocketAddress: `ws://${string}:${string}`;

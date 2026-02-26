@@ -10,7 +10,7 @@ import chalk from 'chalk';
  */
 @injectable()
 export class SockServer {
-  private wserver: WebSocketServer | null = null;
+  private _wserver: WebSocketServer | null = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private listeners: SockServerLisntener<any>[] = [];
 
@@ -53,19 +53,21 @@ export class SockServer {
     this.listeners.push(listener);
   }
 
-  private dispatch<T extends SockRecieveContent>(msg: SockRecieve<T>) {
+  private dispatch<T extends SockRecieveContent>(msg: SockRecieve<T>, target: WebSocket) {
     this.listeners.forEach((l) => {
-      l(msg);
+      l(msg, (response) => {
+        this.sendMsg<SockServerResponseContent>(target, response);
+      });
     });
   }
 
   public setup() {
-    this.wserver = new WebSocketServer({
+    this._wserver = new WebSocketServer({
       port: this._port,
       host: this._host,
     });
 
-    this.wserver.addListener('connection', (socket) => {
+    this._wserver.addListener('connection', (socket) => {
       this.sendMsg<SockServerResponseConnected>(socket, {
         type: 'connected',
         content: null,
@@ -75,12 +77,12 @@ export class SockServer {
         if (typeof e.data === 'string') {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const data: SockRecieve<any> = JSON.parse(e.data);
-          this.dispatch(data);
+          this.dispatch(data, e.target);
         }
 
         this.sendMsg<SockServerResponseContent>(socket, {
           type: 'send_ok',
-          content: null,
+          content: e.data,
         });
       });
     });
@@ -91,11 +93,11 @@ export class SockServer {
    * @param token
    */
   public reload<T>(token: ReloadTokens, data?: T | undefined) {
-    if (this.wserver === null) {
+    if (this._wserver === null) {
       throw new Error('Websocket server has never been setuped');
     }
 
-    this.wserver.clients.forEach((client) => {
+    this._wserver.clients.forEach((client) => {
       this.sendMsg<SockServerResponseReload | SockServerResponseHMRReload>(client, {
         type: 'reload',
         content: { reloadType: token, data },
@@ -113,10 +115,10 @@ export class SockServer {
   }
 
   public dispose() {
-    if (this.wserver === null) {
+    if (this._wserver === null) {
       throw new Error('Websocket server has never been setuped');
     }
-    this.wserver.close();
+    this._wserver.close();
   }
 }
 
@@ -132,7 +134,17 @@ export interface SockServerResponseReload extends SockServerResponseContent {
 
 export interface SockServerResponseHMRReload extends SockServerResponseContent {
   type: 'reload';
-  content: { reloadType: `HMR_${string}`; data: { js: string } };
+  content: { reloadType: `HMR_${string}`; data: { js: string; fileName: string } };
+}
+
+export interface SockServerRequestSendResult extends SockServerResponseContent {
+  type: 'request_result';
+  content: { entryPoint: string };
+}
+
+export interface SockServerResponseSendResult extends SockServerResponseContent {
+  type: 'request_result_response';
+  content: { js: string };
 }
 
 export type ReloadTokens =
@@ -163,7 +175,10 @@ export interface SockServerConsoleRecieved extends SockRecieveContent {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SockServerLisntener<T extends SockRecieveContent> = (msg: SockRecieve<T>) => any;
+type SockServerLisntener<T extends SockRecieveContent> = (
+  msg: SockRecieve<T>,
+  sendResponse: (response: SockServerResponseContent) => void,
+) => unknown;
 export interface SockRecieve<T extends SockRecieveContent> {
   type: T['type'];
   content: T['content'];

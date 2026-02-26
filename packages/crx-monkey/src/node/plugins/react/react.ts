@@ -7,8 +7,6 @@ export function reactWatch(options: TsBundlerOptions = { esbuild: {} }): CrxmBun
   return {
     name: 'React watch plugin',
     plugin: async (filePath, sendResult, bundler) => {
-      bundler.hmr.enable();
-
       /**
        * Watch and send
        */
