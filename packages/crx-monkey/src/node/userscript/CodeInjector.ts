@@ -162,19 +162,19 @@ export class CodeInjector {
    */
   private getCodeWrappedInjectTiming(code: string, runAt: 'document_idle' | 'document_end') {
     if (runAt === 'document_idle') {
-      return (
-        '["DOMContentLoaded", "crxm_DOMContentLoaded"].forEach((eventType) => {' +
-        'document.addEventListener(eventType, () => {setTimeout(() => {' +
-        code +
-        '\n}, 1)})});\n'
-      );
+      return `const executeIdle = () => {\n${code}\n};
+  if (document.readyState === 'complete') {
+    executeIdle();
+  } else {
+    window.addEventListener('load', executeIdle, { once: true });
+  }`;
     } else if (runAt === 'document_end') {
-      return (
-        '["DOMContentLoaded", "crxm_DOMContentLoaded"].forEach((eventType) => {' +
-        'document.addEventListener(eventType, () => {' +
-        code +
-        '\n})});\n'
-      );
+      return `const executeEnd = () => {\n${code}\n};
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', executeEnd, { once: true });
+  } else {
+    executeEnd();
+  }`;
     } else {
       return code;
     }
