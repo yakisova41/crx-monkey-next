@@ -2,6 +2,7 @@ import {
   defineConfig,
   esbuildCSSPlugin,
   reactWatch,
+  tsBundler,
   tsBundlerWatch,
 } from '../packages/crx-monkey/dist/node/exports.js';
 
@@ -18,6 +19,9 @@ const config = defineConfig({
       },
     }),
     '\\.(ts|js)$': tsBundlerWatch(),
+  },
+  build: {
+    '\\.(ts|js|jsx|tsx)$': tsBundler({ esbuild: { plugins: [esbuildCSSPlugin()] } }),
   },
 });
 export default config;

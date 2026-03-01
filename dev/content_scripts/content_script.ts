@@ -15,3 +15,5 @@ message.addListener((request) => {
 })
  
 }
+
+console.log(__crxm_build_id)
