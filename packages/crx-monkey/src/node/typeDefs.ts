@@ -230,3 +230,5 @@ export type CrxmBundlerPluginWatcher = {
 };
 
 export type CrxmResultSender = (result: Uint8Array) => void;
+
+export type CrxmUserjsPopupFunc = () => void;
