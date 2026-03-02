@@ -12,7 +12,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "baseUrl": ".",
-    "types": ["node", "chrome", "tampermonkey", "bun", "jest"],
+    "types": ["node", "chrome", "tampermonkey", "bun"],
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true
   },
