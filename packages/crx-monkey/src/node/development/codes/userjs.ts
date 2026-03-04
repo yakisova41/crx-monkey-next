@@ -178,7 +178,7 @@ export function userjs(
     GM.registerMenuCommand(
       'Open popup',
       () => {
-        unsafeWindow.__crxm__popup[buildId]();
+        unsafeWindow.__crxm__popup[buildId].open();
       },
       '1',
     );

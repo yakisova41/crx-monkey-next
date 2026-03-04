@@ -32,9 +32,7 @@ export class Logger {
     console.log(
       `\n  You can install development chrome extension:\n    ${chalk.greenBright(chromePathAbsolute)}`,
     );
-    console.log(
-      `\n  Websocket running on:\n    ${chalk.greenBright(`http://${host}:${websocket}`)}`,
-    );
+    console.log(`\n  Websocket running on:\n    ${chalk.greenBright(`ws://${host}:${websocket}`)}`);
     console.log('');
   }
 

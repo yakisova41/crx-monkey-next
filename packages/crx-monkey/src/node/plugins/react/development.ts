@@ -45,7 +45,7 @@ export async function developmentReact(
         content: { js },
       } = response as SockServerResponseSendResult;
 
-      if (typeof chrome.runtime === 'undefined') {
+      if (__crxm_running_env.split('-')[0] === 'userjs') {
         // userjs
         await loadByString(js);
       }
@@ -63,7 +63,7 @@ export async function developmentReact(
 
         console.log('[crxm] hmr loading...');
 
-        if (typeof chrome.runtime === 'undefined') {
+        if (__crxm_running_env.split('-')[0] === 'userjs') {
           // userjs
           await loadByString(js);
         } else {
@@ -80,6 +80,7 @@ export async function developmentReact(
   async function loadByString(js: string) {
     const s = document.createElement('script');
     s.innerHTML = js;
+    s.type = 'module';
     document.body.appendChild(s);
   }
 

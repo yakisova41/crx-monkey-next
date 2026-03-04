@@ -13,7 +13,7 @@ const config = defineConfig({
   popup_in_userscript: true,
   manifest: './manifest.ts',
   watch: {
-    '\\.(ts|js)x$': reactWatch({
+    '\\.(ts|js)x$': tsBundlerWatch({
       esbuild: {
         plugins: [esbuildCSSPlugin()],
       },

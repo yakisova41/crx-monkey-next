@@ -1,16 +1,28 @@
 import { waitResultOnce } from './message';
 import { CrxmConfigRequired } from '../node/typeDefs';
+import { RunningEnv, RunningEnvPrefix } from './main';
 
-export function getRunningRuntime() {
-  if (typeof __crxm_build_id === 'undefined') {
+export function getRunningRuntime(): 'Userscript' | 'Extension' {
+  if (__crxm_running_env.split('-')[0] === 'userjs') {
     return 'Userscript';
   } else {
     return 'Extension';
   }
 }
 
+export function getEnv(): {
+  prefix: RunningEnvPrefix;
+  env: RunningEnv;
+} {
+  const [prefix, env] = __crxm_running_env.split('-') as [RunningEnvPrefix, RunningEnv];
+  return {
+    prefix,
+    env,
+  };
+}
+
 export function getRunningWorld() {
-  if (getRunningRuntime() === 'Userscript') {
+  if (getEnv().prefix === 'userjs') {
     throw new Error('Cannot be executed by userscripts');
   }
 
@@ -22,7 +34,7 @@ export function getRunningWorld() {
 }
 
 export async function getCrxmConfig() {
-  if (getRunningRuntime() === 'Userscript') {
+  if (getEnv().prefix === 'userjs') {
     throw new Error('Cannot be executed by userscripts');
   }
 
@@ -46,7 +58,7 @@ export async function getCrxmConfig() {
  * You can get the extension id everyworld if running script by chrome extension.
  */
 export async function getExtensionId() {
-  if (getRunningRuntime() === 'Userscript') {
+  if (getEnv().prefix === 'userjs') {
     throw new Error('Cannot be executed by userscripts');
   }
 
@@ -102,6 +114,7 @@ export function attachConsole() {
 
 export const runtime = {
   getRunningRuntime,
+  getEnv,
   getRunningWorld,
   getExtensionId,
   getCrxmConfig,

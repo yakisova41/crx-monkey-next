@@ -249,10 +249,13 @@ export class Distributior {
         let code: string = decorded;
 
         if (flag === 'html_script') {
-          // Inject build id
-          const buildIdInjection = `  var __crxm_build_id = "${this.buildId}";\n`;
+          // Inject crxm vars
+          const varinjection = [
+            `var __crxm_build_id = "${this.buildId}"`,
+            `var __crxm_running_env = 'chrome-html_script'`,
+          ].join('\n');
           const iifeRegex = /(\((?:async\s+)?(?:function.*?|.*?=>)\s*\{)/;
-          code = code.replace(iifeRegex, `$1\n${buildIdInjection}`);
+          code = code.replace(iifeRegex, `$1\n${varinjection}`);
         }
 
         await fsExtra.outputFile(outputPath, code);
@@ -294,10 +297,13 @@ export class Distributior {
 
       let decorded = decoder.decode(result);
 
-      // Inject build id
-      const buildIdInjection = `  var __crxm_build_id = "${this.buildId}";\n`;
+      // Inject crxm vars
+      const varinjection = [
+        `var __crxm_build_id = "${this.buildId}"`,
+        `var __crxm_running_env = 'chrome-content'`,
+      ].join('\n');
       const iifeRegex = /(\((?:async\s+)?(?:function.*?|.*?=>)\s*\{)/;
-      decorded = decorded.replace(iifeRegex, `$1\n${buildIdInjection}`);
+      decorded = decorded.replace(iifeRegex, `$1\n${varinjection}`);
 
       const code: string | Uint8Array = this.createDefineCode(this._defines.content) + decorded;
 
@@ -333,10 +339,13 @@ export class Distributior {
       const decoder = new TextDecoder();
       let resultDecoded = decoder.decode(buildResult);
 
-      // Inject build id
-      const buildIdInjection = `  var __crxm_build_id = "${this.buildId}";\n`;
+      // Inject crxm vars
+      const varinjection = [
+        `var __crxm_build_id = "${this.buildId}"`,
+        `var __crxm_running_env = 'chrome-sw'`,
+      ].join('\n');
       const iifeRegex = /(\((?:async\s+)?(?:function.*?|.*?=>)\s*\{)/;
-      resultDecoded = resultDecoded.replace(iifeRegex, `$1\n${buildIdInjection}`);
+      resultDecoded = resultDecoded.replace(iifeRegex, `$1\n${varinjection}`);
 
       let code: string;
 
