@@ -51,21 +51,21 @@ export class UserscriptBundler {
     const url = URL.createObjectURL(blob);
 
     function makePopupElement(){
-      const popup = document.createElement("iframe");
-      popup.id = "crxm__popup";
-      popup.src = url;
-      popup.sandbox = "allow-scripts"
-      popup.style.position = "fixed"
-      popup.style.top = "20px";
-      popup.style.right = "20px";
-      popup.style.zIndex = "9999";
-      popup.style.background = "light-dark(#fff, #333)";
-      popup.style.border = "none";
-      popup.style.height = "200px";
-      popup.addEventListener('mouseleave', () => {
-        popup.remove();
+      const popupFrame = document.createElement("iframe");
+      popupFrame.id = "crxm__popup";
+      popupFrame.src = url;
+      popupFrame.sandbox = "allow-scripts"
+      popupFrame.style.position = "fixed"
+      popupFrame.style.top = "20px";
+      popupFrame.style.right = "20px";
+      popupFrame.style.zIndex = "9999";
+      popupFrame.style.background = "light-dark(#fff, #333)";
+      popupFrame.style.border = "none";
+      popupFrame.style.height = "200px";
+      popupFrame.addEventListener('mouseleave', () => {
+        popupFrame.remove();
       }); 
-      return popup;   
+      return popupFrame;   
     }
 
 
@@ -73,10 +73,17 @@ export class UserscriptBundler {
       window.__crxm__popup = {};    
     }
 
-    window.__crxm__popup["${this.buildID}"] = () => {
-      const popup = makePopupElement();
-      document.body.appendChild(popup);
-    }
+    let popup = null;
+    window.__crxm__popup["${this.buildID}"] = {
+      open: () => {
+        popup = makePopupElement();
+        document.body.appendChild(popup);
+      },
+      close: () => {
+        popup.remove();
+        popup = null;
+      },
+    };
     `;
 
     const e = new TextEncoder();
@@ -199,7 +206,7 @@ class UserJsPopupBlock extends Codeblock implements I_Codeblock {
     if (this.iswatch) {
       result += `\n// ${this.filePath}\n function ${this.funcName}() {\n${text}}\n`;
     } else {
-      result += `\n// ${this.filePath}\n function ${this.funcName}() {\n${text}}\n GM.registerMenuCommand("Open Popup", () => {unsafeWindow.__crxm__popup["${this.buildId}"]();\n}, '1');\n`;
+      result += `\n// ${this.filePath}\n function ${this.funcName}() {\n${text}}\n GM.registerMenuCommand("Open Popup", () => {unsafeWindow.__crxm__popup["${this.buildId}"].open();\n}, '1');\n`;
     }
 
     return result;
