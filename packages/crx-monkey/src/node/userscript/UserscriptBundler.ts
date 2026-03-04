@@ -135,7 +135,13 @@ class UserJsCodeBlock extends Codeblock implements I_Codeblock {
 
     const text = new TextDecoder().decode(this.content);
 
-    result += `\n// ${this.filePath}\n function ${this.funcName}() {\n  var __crxm_build_id = "${this.buildId}";\n${text}}\n`;
+    // Inject crxm vars
+    const varinjection = [
+      `var __crxm_build_id = "${this.buildId}"`,
+      `var __crxm_running_env = 'userjs-userjs_script'`,
+    ].join('\n');
+
+    result += `\n// ${this.filePath}\n function ${this.funcName}() {\n${varinjection}\n${text}}\n`;
 
     return result;
   }
@@ -190,9 +196,8 @@ class UserJsPopupBlock extends Codeblock implements I_Codeblock {
     let result = '';
 
     const text = new TextDecoder().decode(this.content);
-
     if (this.iswatch) {
-      result += `\n// ${this.filePath}\n function ${this.funcName}() {\n  var __crxm_build_id = "${this.buildId}";\n${text}}\n`;
+      result += `\n// ${this.filePath}\n function ${this.funcName}() {\n${text}}\n`;
     } else {
       result += `\n// ${this.filePath}\n function ${this.funcName}() {\n${text}}\n GM.registerMenuCommand("Open Popup", () => {unsafeWindow.__crxm__popup["${this.buildId}"]();\n}, '1');\n`;
     }

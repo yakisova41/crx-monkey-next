@@ -7,7 +7,7 @@ import { runtime } from './runtime';
  * @returns
  */
 function getMessage(messageName: string, substitutions?: string | string[] | undefined) {
-  if (runtime.getRunningRuntime() === 'Extension') {
+  if (runtime.getEnv().prefix === 'chrome') {
     if (runtime.getRunningWorld() === 'ISOLATED') {
       return chrome.i18n.getMessage(messageName, substitutions);
     }
@@ -15,7 +15,7 @@ function getMessage(messageName: string, substitutions?: string | string[] | und
 }
 
 async function detectLanguage(text: string) {
-  if (runtime.getRunningRuntime() === 'Extension') {
+  if (runtime.getEnv().prefix === 'chrome') {
     if (runtime.getRunningWorld() === 'ISOLATED') {
       return chrome.i18n.detectLanguage(text);
     }
@@ -23,7 +23,7 @@ async function detectLanguage(text: string) {
 }
 
 async function getAcceptLanguages() {
-  if (runtime.getRunningRuntime() === 'Extension') {
+  if (runtime.getEnv().prefix === 'chrome') {
     if (runtime.getRunningWorld() === 'ISOLATED') {
       return chrome.i18n.getAcceptLanguages();
     }
@@ -31,7 +31,7 @@ async function getAcceptLanguages() {
 }
 
 function getUILanguage() {
-  if (runtime.getRunningRuntime() === 'Extension') {
+  if (runtime.getEnv().prefix === 'chrome') {
     if (runtime.getRunningWorld() === 'ISOLATED') {
       return chrome.i18n.getUILanguage();
     }

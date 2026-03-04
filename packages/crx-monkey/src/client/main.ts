@@ -10,9 +10,13 @@ export * from './message';
 export * from './i18n';
 export * from './runtime';
 
+export type RunningEnvPrefix = 'userjs' | 'chrome';
+export type RunningEnv = 'html_script_react' | 'html_script' | 'sw' | 'content' | 'userjs_script';
+
 declare global {
   const __crxm_build_id: string;
   const __crxm__popup: Record<typeof __crxm_build_id, CrxmUserjsPopupFunc>;
+  const __crxm_running_env: `${RunningEnvPrefix}-${RunningEnv}`;
   interface WindowEventMap {
     'crx-isolated-connector-result': IsolateConnectorEvent<never>;
   }

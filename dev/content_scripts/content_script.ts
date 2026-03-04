@@ -1,4 +1,4 @@
-import {message, getRunningRuntime} from "../../packages/crx-monkey/dist/client/main"
+import {message, getRunningRuntime, getEnv} from "../../packages/crx-monkey/dist/client/main"
 
 console.log("Content scripts is running.", "world: main")
 
@@ -16,4 +16,4 @@ message.addListener((request) => {
  
 }
 
-console.log(__crxm_build_id)
+console.log(getEnv())

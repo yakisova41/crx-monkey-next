@@ -324,10 +324,11 @@ export class Popup {
 
       const decoder = new TextDecoder();
       const resultStr = decoder.decode(result);
-      const escaped = resultStr
-        .replaceAll('\\', '\\\\')
-        .replaceAll('`', '\\`')
-        .replaceAll('$', '\\$');
+      const varinjection = [`\nvar __crxm_running_env = 'userjs-html_script';\n`].join('\n');
+
+      const escaped =
+        varinjection +
+        resultStr.replaceAll('\\', '\\\\').replaceAll('`', '\\`').replaceAll('$', '\\$');
 
       if (target.flag === 'html_script') {
         const nodes = parser.querySelectorAll(`script[src="${entry}"]`);

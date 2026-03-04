@@ -34,13 +34,17 @@ export class HMR implements I_HMR {
         }
 
         const decoder = new TextDecoder();
-        const text = decoder.decode(this.storedResults[entryPoint]);
+        const decodedResult = decoder.decode(this.storedResults[entryPoint]);
+        const varinjection = [`var __crxm_running_env = 'userjs-html_script_react';`, ''].join(
+          '\n',
+        );
+        const code = varinjection + decodedResult;
 
-        // Response build result to client
+        // Response build result to userjs client
         const response: SockServerResponseSendResult = {
           type: 'request_result_response',
           content: {
-            js: text,
+            js: code,
           },
         };
 
@@ -65,12 +69,24 @@ export class HMR implements I_HMR {
 
     this.storedResults[entry] = buildResult;
 
-    await fse.outputFile(resolve(chrome, cacheFileName), decodedResult);
+    // for chrome
+    await (async () => {
+      const varinjection = [`var __crxm_running_env = 'chrome-html_script_react';`, ''].join('\n');
+      const code = varinjection + decodedResult;
+      await fse.outputFile(resolve(chrome, cacheFileName), code);
+    })();
 
-    this.sockServer.reload('HMR_' + entry, {
-      js: decodedResult,
-      fileName: cacheFileName,
-    });
+    // for chrome to reload and for userjs
+    await (async () => {
+      const varinjection = [`var __crxm_running_env = 'userjs-html_script_react';`, ''].join('\n');
+      const code = varinjection + decodedResult;
+      this.sockServer.reload<SockServerResponseSendResult>('HMR_' + entry, {
+        content: {
+          js: code,
+        },
+        type: 'request_result_response',
+      });
+    })();
   }
 
   public getCacheFileName(entry: string) {
