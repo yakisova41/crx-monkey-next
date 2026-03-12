@@ -170,7 +170,7 @@ export type CrxmManifestRequired = CrxmManifestImportantKeyRequired & chrome.run
 
 export type BuildTarget = {
   hash: string;
-  entryPoint: string;
+  entryPoint: FilePath<'absolute'>;
   usingPlugin: {
     build: CrxmBundlerPlugin;
     watch: CrxmBundlerPluginWatch;
@@ -182,8 +182,8 @@ export type ScriptUpdateHandler = (target: BuildTarget) => unknown;
 
 export interface I_HMR {
   setup: () => void;
-  dispatchResult(entry: string, buildResult: Uint8Array): Promise<void>;
-  getCacheFileName(entry: string): string;
+  dispatchResult(entry: FilePath<'absolute'>, buildResult: Uint8Array): Promise<void>;
+  getCacheFileName(entry: FilePath<'absolute'>): string;
   websocketAddress: `ws://${string}:${string}`;
 }
 
@@ -191,13 +191,13 @@ export interface I_CrxmBundler {
   hmr: I_HMR;
   compileResults: Record<string, Uint8Array>;
   addTarget(
-    entryPoint: string,
+    entryPoint: FilePath<'absolute'>,
     usingPlugin: { build: CrxmBundlerPlugin; watch: CrxmBundlerPluginWatch },
     flag: string,
   ): string;
-  removeTarget(targetEntryPoint: string): void;
-  getInternalHashFromPath(filePath: string, flag: string | null): string;
-  getBuildResultFromPath(filePath: string): Uint8Array | undefined;
+  removeTarget(targetEntryPoint: FilePath<'absolute'>): void;
+  getInternalHashFromPath(filePath: FilePath<'absolute'>, flag: string | null): string;
+  getBuildResultFromPath(filePath: FilePath<'absolute'>): Uint8Array | undefined;
   build(): Promise<void>;
   compileForce(hash: string): Promise<BuildTarget>;
   watch(): Promise<void>;
@@ -211,7 +211,7 @@ export interface I_CrxmBundler {
  */
 export type CrxmBundlerPlugin = {
   name: string;
-  plugin: (filepath: string, bundler: I_CrxmBundler) => Promise<Uint8Array>;
+  plugin: (filepath: FilePath<'absolute'>, bundler: I_CrxmBundler) => Promise<Uint8Array>;
 };
 /**
  * Plugin for used when watch.
@@ -219,7 +219,7 @@ export type CrxmBundlerPlugin = {
 export type CrxmBundlerPluginWatch = {
   name: string;
   plugin: (
-    filepath: string,
+    filepath: FilePath<'absolute'>,
     sendResult: CrxmResultSender,
     bundler: I_CrxmBundler,
   ) => Promise<CrxmBundlerPluginWatcher>;
@@ -234,4 +234,12 @@ export type CrxmResultSender = (result: Uint8Array) => void;
 export type CrxmUserjsPopup = {
   open: () => void;
   close: () => void;
+};
+
+type FilePathBrands = {
+  absolute: symbol;
+  relative: symbol;
+};
+export type FilePath<T extends keyof FilePathBrands = 'relative'> = string & {
+  readonly [K in FilePathBrands[T]]: unknown;
 };

@@ -5,6 +5,7 @@ import { UserscriptHeaderFactory } from './UserscriptHeader';
 import { TYPES } from '../types';
 import { ConfigLoader } from '../ConfigLoader';
 import { Codeblock, I_Codeblock } from './CodeBlock';
+import { FilePath } from '../typeDefs';
 
 /**
  * Properly bundle each build result as a single user script
@@ -12,7 +13,7 @@ import { Codeblock, I_Codeblock } from './CodeBlock';
 @injectable()
 export class UserscriptBundler {
   private codeWorkspace: string = '';
-  private codeBlocks: Record<string, I_Codeblock> = {};
+  private codeBlocks: Record<FilePath<'absolute'>, I_Codeblock> = {};
   private popupFunctionName!: string;
 
   constructor(
@@ -34,17 +35,17 @@ export class UserscriptBundler {
    * @param jsFilePath
    * @param codeBinaly
    */
-  public addBuildResult(jsFilePath: string, codeBinaly: Uint8Array) {
+  public addBuildResult(jsFilePath: FilePath<'absolute'>, codeBinaly: Uint8Array) {
     const codeBlock = new UserJsCodeBlock(jsFilePath, codeBinaly, this.buildID);
     this.codeBlocks[jsFilePath] = codeBlock;
   }
 
-  public addStyle(cssFilePath: string, code: Uint8Array, trusted: boolean) {
+  public addStyle(cssFilePath: FilePath<'absolute'>, code: Uint8Array, trusted: boolean) {
     const codeBlock = new UserJsStyleBlock(cssFilePath, code, this.buildID, trusted);
     this.codeBlocks[cssFilePath] = codeBlock;
   }
 
-  public addPopup(filePath: string, html: string) {
+  public addPopup(filePath: FilePath<'absolute'>, html: string) {
     const code = `const html = \`${html}\`;
 
     const blob = new Blob([html], {type: 'text/html'});
@@ -107,7 +108,7 @@ export class UserscriptBundler {
     /**
      * Insert functioned build results.
      */
-    Object.keys(this.codeBlocks).forEach((filePath) => {
+    (Object.keys(this.codeBlocks) as FilePath<'absolute'>[]).forEach((filePath) => {
       const codeBlock = this.codeBlocks[filePath];
       const functionalized = codeBlock.getFunctionalized();
       this.codeWorkspace += functionalized;
@@ -156,7 +157,7 @@ class UserJsCodeBlock extends Codeblock implements I_Codeblock {
 
 class UserJsStyleBlock extends Codeblock implements I_Codeblock {
   constructor(
-    filePath: string,
+    filePath: FilePath<'absolute'>,
     binary: Uint8Array,
     buildID: string,
     private trusted: boolean,
@@ -191,7 +192,7 @@ class UserJsStyleBlock extends Codeblock implements I_Codeblock {
 
 class UserJsPopupBlock extends Codeblock implements I_Codeblock {
   constructor(
-    filePath: string,
+    filePath: FilePath<'absolute'>,
     binary: Uint8Array,
     buildID: string,
     private iswatch: boolean,

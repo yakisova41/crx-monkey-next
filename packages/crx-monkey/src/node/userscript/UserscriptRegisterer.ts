@@ -7,6 +7,7 @@ import { ManifestLoader } from '../manifest/ManifestLoader';
 import fse from 'fs-extra';
 import { geti18nMessages } from '../manifest/i18n';
 import { ConfigLoader } from '../ConfigLoader';
+import { FilePath } from '../typeDefs';
 
 @injectable()
 export class UserscriptRegisterer {
@@ -212,7 +213,7 @@ export class UserscriptRegisterer {
    * @param imgPath Local image file path.
    * @returns
    */
-  private convertImgToBase64(imgPath: string) {
+  private convertImgToBase64(imgPath: FilePath<'absolute' | 'relative'>) {
     const icon = fse.readFileSync(imgPath);
     const buf = Buffer.from(icon).toString('base64');
     return `data:image/png;base64,${buf}`;

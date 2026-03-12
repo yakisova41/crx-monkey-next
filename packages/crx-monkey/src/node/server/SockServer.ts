@@ -4,6 +4,7 @@ import { TYPES } from '../types';
 import { ConfigLoader } from '../ConfigLoader';
 import { Logger } from '../Logger';
 import chalk from 'chalk';
+import { FilePath } from '../typeDefs';
 
 /**
  * The websocket server of manage auto reload.
@@ -134,12 +135,15 @@ export interface SockServerResponseReload extends SockServerResponseContent {
 
 export interface SockServerResponseHMRReload extends SockServerResponseContent {
   type: 'reload';
-  content: { reloadType: `HMR_${string}`; data: { js: string; fileName: string } };
+  content: {
+    reloadType: `HMR_${FilePath<'absolute'>}`;
+    data: { js: string; entryPoint: FilePath<'absolute'> };
+  };
 }
 
 export interface SockServerRequestSendResult extends SockServerResponseContent {
   type: 'request_result';
-  content: { entryPoint: string };
+  content: { entryPoint: FilePath<'absolute'> };
 }
 
 export interface SockServerResponseSendResult extends SockServerResponseContent {

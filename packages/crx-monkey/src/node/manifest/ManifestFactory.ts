@@ -1,6 +1,6 @@
 import { inject, injectable } from 'inversify';
 import { getMessage } from './i18n';
-import type { CrxmManifest, CrxmManifestImportantKeys } from 'src/node/typeDefs';
+import type { CrxmManifest, CrxmManifestImportantKeys, FilePath } from 'src/node/typeDefs';
 import { TYPES } from '../types';
 import { ManifestLoader } from './ManifestLoader';
 
@@ -62,7 +62,7 @@ export class ManifestFactory {
     return this.absorbCustomKeys(this.workspace);
   }
 
-  public resolve(sourcePath: string, targetPath: string) {
+  public resolve(sourcePath: FilePath<'relative' | 'absolute'>, targetPath: FilePath<'relative'>) {
     // sw
     if (
       this.workspace.background !== undefined &&
@@ -108,9 +108,12 @@ export class ManifestFactory {
     }
 
     // Icons
-    const icons = structuredClone(this.workspace.icons);
+    const icons = structuredClone(this.workspace.icons) as Record<
+      number,
+      FilePath<'relative' | 'absolute'>
+    >;
     if (icons !== undefined) {
-      const newIcons: Record<number, string> = {
+      const newIcons = {
         ...icons,
       };
 

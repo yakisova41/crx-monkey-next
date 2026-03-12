@@ -16,6 +16,8 @@ import { Logger } from './Logger';
 import chalk from 'chalk';
 import { Popup } from './popup/Popup';
 import { stringifyFunction } from './utils';
+import { FilePath } from './typeDefs';
+import { absoluteGuard } from './file';
 
 @injectable()
 export class Distributior {
@@ -51,37 +53,56 @@ export class Distributior {
    */
   public async distAll() {
     const { output } = this.configLoader.useConfig();
+    const configPath = this.configLoader.useConfigPath();
+
     const {
       resources: { scriptResources, raw, htmlResources },
     } = this.manifestParser.parseResult;
 
     if (output.chrome !== undefined) {
-      await this.outputAllChromeContentscripts(output.chrome);
-      await this.outputAllChromeCss(output.chrome);
+      const outputPath = absoluteGuard(resolve(dirname(configPath), output.chrome));
+
+      await this.outputAllChromeContentscripts(outputPath);
+      await this.outputAllChromeCss(outputPath);
       if (scriptResources.sw.length !== 0) {
-        await this.outputChromeSw(scriptResources.sw[0], raw.scriptResources.sw[0], output.chrome);
+        await this.outputChromeSw(scriptResources.sw[0], raw.scriptResources.sw[0], outputPath);
       }
 
       if (htmlResources.popup.length !== 0) {
-        await this.outputChromePopup(output.chrome);
+        await this.outputChromePopup(outputPath);
       }
 
-      await this.copyPublicDir(output.chrome);
-      await this.copyIcons(output.chrome);
+      await this.copyPublicDir(outputPath);
+      await this.copyIcons(outputPath);
       await this.outputIsolatedConnector();
-      await this.outputManifest(output.chrome);
+      await this.outputManifest(outputPath);
     }
 
     if (output.userjs !== undefined) {
-      await this.userjsBundle(output.userjs);
+      const outputPath = absoluteGuard(resolve(dirname(configPath), output.userjs));
+
+      await this.userjsBundle(outputPath);
     }
   }
 
   public async dist(
-    targetSourceAbsolutePath: string,
+    targetSourceAbsolutePath: FilePath<'absolute'>,
     type: 'content' | 'sw' | 'popup' | 'css' | 'userjs',
   ) {
     const { output } = this.configLoader.useConfig();
+    const configPath = this.configLoader.useConfigPath();
+
+    if (output.chrome === undefined) {
+      throw new Error('output.chrome is undefined.');
+    }
+
+    if (output.userjs === undefined) {
+      throw new Error('output.userjs is undefined.');
+    }
+
+    const chromeOutputPath = absoluteGuard(resolve(dirname(configPath), output.chrome));
+    const userjsOutputPath = absoluteGuard(resolve(dirname(configPath), output.userjs));
+
     const {
       resources: { scriptResources, raw, cssResources },
     } = this.manifestParser.parseResult;
@@ -89,51 +110,39 @@ export class Distributior {
     if (type === 'content') {
       await Promise.all(
         scriptResources.content.map(async (absolutePath, i) => {
-          if (output.chrome !== undefined) {
-            const pathInManifest = raw.scriptResources.content[i];
+          const pathInManifest = raw.scriptResources.content[i];
 
-            await this.outputChromeContentScript(absolutePath, pathInManifest, output.chrome);
-          }
+          await this.outputChromeContentScript(absolutePath, pathInManifest, chromeOutputPath);
         }),
       );
     }
 
     if (type === 'sw') {
-      if (output.chrome !== undefined) {
-        await this.outputChromeSw(
-          targetSourceAbsolutePath,
-          raw.scriptResources.sw[0],
-          output.chrome,
-        );
-      }
+      await this.outputChromeSw(
+        targetSourceAbsolutePath,
+        raw.scriptResources.sw[0],
+        chromeOutputPath,
+      );
     }
 
     if (type === 'popup') {
-      if (output.chrome !== undefined) {
-        await this.outputChromePopup(output.chrome);
-      }
+      await this.outputChromePopup(chromeOutputPath);
     }
 
     if (type === 'css') {
       await Promise.all(
         cssResources.map(async (absolutePath, i) => {
-          if (output.chrome !== undefined) {
-            const pathInManifest = raw.cssResources[i];
+          const pathInManifest = raw.cssResources[i];
 
-            await this.outputChromeCss(absolutePath, pathInManifest, output.chrome);
-          }
+          await this.outputChromeCss(absolutePath, pathInManifest, chromeOutputPath);
         }),
       );
     }
 
-    if (output.chrome !== undefined) {
-      await this.outputManifest(output.chrome);
-    }
+    await this.outputManifest(chromeOutputPath);
 
     if (type === 'userjs') {
-      if (output.userjs !== undefined) {
-        await this.userjsBundle(output.userjs);
-      }
+      await this.userjsBundle(userjsOutputPath);
     }
   }
 
@@ -183,11 +192,11 @@ export class Distributior {
    * @param filePath
    * @returns A filePath that extension converted to .js.
    */
-  private changeExt(filePath: string, newExt: string) {
+  private changeExt<T extends FilePath<'absolute' | 'relative'>>(filePath: T, newExt: string) {
     const rawFileNameSplited = basename(filePath).split('.');
     rawFileNameSplited[rawFileNameSplited.length - 1] = newExt;
     const newFilename = rawFileNameSplited.join('.');
-    return newFilename;
+    return newFilename as T;
   }
 
   /**
@@ -195,7 +204,7 @@ export class Distributior {
    * This operation must be used after all transpiling.
    * @param outputPath
    */
-  private async outputManifest(outputPath: string) {
+  private async outputManifest(outputPath: FilePath<'absolute'>) {
     const manifest = this.manifestFactory.getWorkspace();
     await fsExtra.outputFile(
       resolve(outputPath, 'manifest.json'),
@@ -203,7 +212,7 @@ export class Distributior {
     );
   }
 
-  private async outputAllChromeContentscripts(distPath: string) {
+  private async outputAllChromeContentscripts(distPath: FilePath<'absolute'>) {
     const {
       resources: { scriptResources, raw },
     } = this.manifestParser.parseResult;
@@ -214,7 +223,7 @@ export class Distributior {
     );
   }
 
-  private async outputChromePopup(distFilepath: string) {
+  private async outputChromePopup(distFilepath: FilePath<'absolute'>) {
     await this.popup.refreshExtensionParser();
 
     // Output Resources
@@ -241,7 +250,7 @@ export class Distributior {
         const endemicHash = MurmurHash3.x86.hash32(entryPoint).toString();
         const fileName = endemicHash + '_' + extConverted;
 
-        const outputPath = resolve(distFilepath, fileName);
+        const outputPath = absoluteGuard(resolve(distFilepath, fileName));
 
         const d = new TextDecoder();
         const decorded = d.decode(result);
@@ -274,20 +283,20 @@ export class Distributior {
   }
 
   private async outputChromeContentScript(
-    sourceAbsolutePath: string,
-    sourceFilePathInManifest: string,
-    distFilepath: string,
+    sourceFilePath: FilePath<'absolute'>,
+    sourceFilePathInManifest: FilePath<'relative' | 'absolute'>,
+    distFilepath: FilePath<'absolute'>,
   ) {
-    let result = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+    let result = this.bundler.getBuildResultFromPath(sourceFilePath);
 
     if (result === undefined) {
-      await this.bundler.compileForce(this.bundler.getInternalHashFromPath(sourceAbsolutePath));
-      result = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+      await this.bundler.compileForce(this.bundler.getInternalHashFromPath(sourceFilePath));
+      result = this.bundler.getBuildResultFromPath(sourceFilePath);
     }
 
     if (result !== undefined) {
-      const extChanged = this.changeExt(sourceAbsolutePath, 'js');
-      const endemicHash = MurmurHash3.x86.hash32(sourceAbsolutePath).toString();
+      const extChanged = this.changeExt(sourceFilePath, 'js');
+      const endemicHash = MurmurHash3.x86.hash32(sourceFilePath).toString();
 
       const fileName = endemicHash + '_' + extChanged;
 
@@ -308,7 +317,7 @@ export class Distributior {
       const code: string | Uint8Array = this.createDefineCode(this._defines.content) + decorded;
 
       this.logger.dispatchDebug(
-        `👋 Output a contentscript to dist. ${chalk.gray(`${sourceAbsolutePath}" -> "${outputPath}`)}`,
+        `👋 Output a contentscript to dist. ${chalk.gray(`${sourceFilePath}" -> "${outputPath}`)}`,
       );
       await fsExtra.outputFile(outputPath, code);
 
@@ -317,23 +326,23 @@ export class Distributior {
   }
 
   private async outputChromeSw(
-    sourceAbsolutePath: string,
-    sourceFilePathInManifest: string,
-    distFilepath: string,
+    sourcePath: FilePath<'absolute'>,
+    sourceFilePathInManifest: FilePath<'absolute' | 'relative'>,
+    distFilepath: FilePath<'absolute'>,
   ) {
-    let buildResult = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+    let buildResult = this.bundler.getBuildResultFromPath(sourcePath);
 
     if (buildResult === undefined) {
-      await this.bundler.compileForce(this.bundler.getInternalHashFromPath(sourceAbsolutePath));
-      buildResult = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+      await this.bundler.compileForce(this.bundler.getInternalHashFromPath(sourcePath));
+      buildResult = this.bundler.getBuildResultFromPath(sourcePath);
     }
 
-    const extChanged = this.changeExt(sourceAbsolutePath, 'js');
-    const endemicHash = MurmurHash3.x86.hash32(sourceAbsolutePath).toString();
+    const extChanged = this.changeExt(sourcePath, 'js');
+    const endemicHash = MurmurHash3.x86.hash32(sourcePath).toString();
 
     const fileName = endemicHash + '_' + extChanged;
 
-    const outputPath = resolve(distFilepath, fileName);
+    const outputPath = absoluteGuard(resolve(distFilepath, fileName));
 
     if (buildResult !== undefined) {
       const decoder = new TextDecoder();
@@ -358,7 +367,7 @@ export class Distributior {
       }
 
       this.logger.dispatchDebug(
-        `👋 Output a service worker to dist. ${chalk.gray(`${sourceAbsolutePath}" -> "${outputPath}`)}`,
+        `👋 Output a service worker to dist. ${chalk.gray(`${sourcePath}" -> "${outputPath}`)}`,
       );
       await fsExtra.outputFile(outputPath, code);
 
@@ -366,7 +375,7 @@ export class Distributior {
     }
   }
 
-  private async outputAllChromeCss(distPath: string) {
+  private async outputAllChromeCss(distPath: FilePath<'absolute'>) {
     const {
       resources: { cssResources, raw },
     } = this.manifestParser.parseResult;
@@ -379,27 +388,27 @@ export class Distributior {
   }
 
   private async outputChromeCss(
-    sourceAbsolutePath: string,
-    sourceFilePathInManifest: string,
-    distFilepath: string,
+    sourcePath: FilePath<'absolute'>,
+    sourceFilePathInManifest: FilePath<'absolute' | 'relative'>,
+    distFilepath: FilePath<'absolute'>,
   ) {
-    let result = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+    let result = this.bundler.getBuildResultFromPath(sourcePath);
 
     if (result === undefined) {
-      await this.bundler.compileForce(this.bundler.getInternalHashFromPath(sourceAbsolutePath));
-      result = this.bundler.getBuildResultFromPath(sourceAbsolutePath);
+      await this.bundler.compileForce(this.bundler.getInternalHashFromPath(sourcePath));
+      result = this.bundler.getBuildResultFromPath(sourcePath);
     }
 
-    const extChanged = this.changeExt(sourceAbsolutePath, 'css');
-    const endemicHash = MurmurHash3.x86.hash32(sourceAbsolutePath).toString();
+    const extChanged = this.changeExt(sourcePath, 'css');
+    const endemicHash = MurmurHash3.x86.hash32(sourcePath).toString();
 
     const fileName = endemicHash + '_' + extChanged;
 
-    const outputPath = resolve(distFilepath, fileName);
+    const outputPath = absoluteGuard(resolve(distFilepath, fileName));
 
     if (result !== undefined) {
       this.logger.dispatchDebug(
-        `👋 Output a css to dist. ${chalk.gray(`${sourceAbsolutePath}" -> "${outputPath}`)}`,
+        `👋 Output a css to dist. ${chalk.gray(`${sourcePath}" -> "${outputPath}`)}`,
       );
       await fsExtra.outputFile(outputPath, result);
       this.manifestFactory.resolve(sourceFilePathInManifest, fileName);
@@ -411,13 +420,16 @@ export class Distributior {
    */
   private async outputIsolatedConnector() {
     const {
-      output: { chrome },
+      output,
       server: { host, websocket },
     } = this.configLoader.useConfig();
 
-    if (chrome === undefined || host === undefined || websocket === undefined) {
+    if (output.chrome === undefined || host === undefined || websocket === undefined) {
       throw new Error('');
     }
+
+    const configPath = this.configLoader.useConfigPath();
+    const chromeOutputPath = absoluteGuard(resolve(dirname(configPath), output.chrome));
 
     let includeConnector = false;
     const isolatedmatches: string[] = [];
@@ -433,7 +445,7 @@ export class Distributior {
 
     if (includeConnector) {
       const isoFileName = 'crxm-isolated-connector.js';
-      const isoConnectorPath = resolve(chrome, isoFileName);
+      const isoConnectorPath = absoluteGuard(resolve(chromeOutputPath, isoFileName));
       await fsExtra.outputFile(
         isoConnectorPath,
         `${stringifyFunction(isolatedConnector, [this.buildId, JSON.stringify(this.configLoader.useConfig())])}\n`,
@@ -448,7 +460,7 @@ export class Distributior {
     }
   }
 
-  private async userjsBundle(distPath: string) {
+  private async userjsBundle(distPath: FilePath<'absolute'>) {
     const {
       resources: {
         scriptResources,
@@ -490,7 +502,7 @@ export class Distributior {
       this.userscriptBundler.addPopup(popupHtmlPath, html);
     }
 
-    const output = resolve(distPath);
+    const output = absoluteGuard(resolve(distPath));
 
     const bundleResult = this.userscriptBundler.createCode();
 
@@ -513,7 +525,7 @@ export class Distributior {
     this.logger.dispatchDebug(`👋 Output a userjs to dist. ${chalk.gray(`"${output}"`)}`);
   }
 
-  private async copyPublicDir(distPath: string) {
+  private async copyPublicDir(distPath: FilePath<'absolute'>) {
     const { public: publicDir } = this.configLoader.useConfig();
 
     if (publicDir !== undefined && publicDir !== false) {
@@ -523,7 +535,7 @@ export class Distributior {
     }
   }
 
-  private async copyIcons(distPath: string) {
+  private async copyIcons(distPath: FilePath<'absolute'>) {
     const { icons } = this.manifestParser.parseResult;
     if (icons !== null) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -531,7 +543,9 @@ export class Distributior {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         Object.entries(icons).map(async ([_key, { raw, path }]) => {
           const fileName = basename(path);
-          const output = resolve(distPath, `${this.publicDirInDist}/icons/`, fileName);
+          const output = absoluteGuard(
+            resolve(distPath, `${this.publicDirInDist}/icons/`, fileName),
+          );
           await fsExtra.copy(path, output);
           this.manifestFactory.resolve(raw, `${this.publicDirInDist}/icons/` + fileName);
         }),

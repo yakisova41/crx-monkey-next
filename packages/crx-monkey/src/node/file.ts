@@ -4,32 +4,32 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import mime from 'mime';
 import esbuild from 'esbuild';
+import { FilePath } from './typeDefs';
 
 export type FileURL = `file:///${string}`;
-export type FilePath = string;
 
 /**
  * If user used windows, path scheme would be changed file:// and absolutable.
  * @param filePath
  * @returns
  */
-export function resolveFilePath(filePath: string, url: boolean = false): FileURL | FilePath {
+export function resolveFilePath(filePath: string, url: boolean = false) {
   if (process.env.OS === 'Windows_NT') {
     if (path.isAbsolute(filePath)) {
       const resolved = path.resolve(filePath).replaceAll('\\', '/');
       if (url) {
-        return 'file:///' + resolved;
+        return ('file:///' + resolved) as FilePath<'absolute'>;
       }
-      return fileURLToPath('file:///' + resolved);
+      return fileURLToPath('file:///' + resolved) as FilePath<'absolute'>;
     } else {
       const resolved = path.resolve(__dirname, filePath).replaceAll('\\', '/');
       if (url) {
-        return 'file:///' + resolved;
+        return ('file:///' + resolved) as FilePath<'absolute'>;
       }
-      return fileURLToPath('file:///' + resolved);
+      return fileURLToPath('file:///' + resolved) as FilePath<'absolute'>;
     }
   } else {
-    return filePath;
+    return path.resolve(filePath) as FilePath<'absolute'>;
   }
 }
 
@@ -40,13 +40,13 @@ export function resolveFilePath(filePath: string, url: boolean = false): FileURL
  */
 export async function noCacheImport<T = unknown>(
   filePath: FilePath,
-  base: FilePath = import.meta.dirname,
+  base: FilePath = import.meta.dirname as FilePath<'absolute'>,
 ) {
   if (!(await exists(filePath))) {
     throw new Error(`The module '${filePath}' does not exist`);
   }
   const data = fse.readFileSync(filePath, {});
-  const tmpFilePath = path.resolve(base, crypto.randomUUID());
+  const tmpFilePath = path.resolve(base, crypto.randomUUID()) as FilePath<'absolute'>;
 
   await fse.outputFile(tmpFilePath, data.toString());
 
@@ -67,7 +67,7 @@ export async function noCacheImport<T = unknown>(
  */
 export async function noCacheImportTs<T = unknown>(
   filePath: FilePath,
-  base: FilePath = import.meta.dirname,
+  base: FilePath = import.meta.dirname as FilePath<'absolute'>,
 ) {
   const buildResult = await esbuild
     .build({
@@ -90,7 +90,7 @@ export async function noCacheImportTs<T = unknown>(
       return outputFile.contents;
     });
 
-  const tmpFilePath = path.resolve(base, crypto.randomUUID());
+  const tmpFilePath = path.resolve(base, crypto.randomUUID()) as FilePath<'absolute'>;
 
   await fse.outputFile(tmpFilePath, buildResult);
 
@@ -109,13 +109,27 @@ export async function noCacheImportTs<T = unknown>(
  * @param filepath
  * @returns
  */
-export function isTs(filepath: string) {
+export function isTs(filepath: FilePath) {
   const s = filepath.split('.');
   return s[s.length - 1] === 'ts' ? true : false;
 }
 
-export function fileToDataUri(filePath: string) {
+export function fileToDataUri(filePath: FilePath) {
   const mimeType = mime.getType(filePath) || 'application/octet-stream';
   const buffer = fse.readFileSync(filePath);
   return `data:${mimeType};base64,${buffer.toString('base64')}`;
+}
+
+/**
+ * This is a type guard that ensures that file path strings are absolute.
+ * We recommend wrapping functions such as path.resolve and using them.
+ * @param filePath
+ * @returns
+ */
+export function absoluteGuard(filePath: string | FilePath) {
+  if (!path.isAbsolute(filePath)) {
+    throw new Error(`The filepath "${filePath} is not absolute."`);
+  }
+
+  return filePath as FilePath<'absolute'>;
 }
