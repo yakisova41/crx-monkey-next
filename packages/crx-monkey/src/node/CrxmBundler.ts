@@ -1,7 +1,7 @@
 import { inject, injectable } from 'inversify';
 import { TYPES } from './types';
 import { dirname, resolve } from 'path';
-import { resolveFilePath } from './file';
+import { absoluteGuard, resolveFilePath } from './file';
 import fse from 'fs-extra';
 import { ConfigLoader } from './ConfigLoader';
 import {
@@ -9,6 +9,7 @@ import {
   CrxmBundlerPlugin,
   CrxmBundlerPluginWatch,
   CrxmBundlerPluginWatcher,
+  FilePath,
   I_CrxmBundler,
   ScriptUpdateHandler,
 } from 'src/node/typeDefs';
@@ -45,7 +46,7 @@ export class CrxmBundler implements I_CrxmBundler {
   }
 
   public addTarget(
-    entryPoint: string,
+    entryPoint: FilePath<'absolute'>,
     usingPlugin: { build: CrxmBundlerPlugin; watch: CrxmBundlerPluginWatch },
     flag: string = '',
   ) {
@@ -55,13 +56,13 @@ export class CrxmBundler implements I_CrxmBundler {
     return hash;
   }
 
-  public removeTarget(targetEntryPoint: string, flag: string | null = null) {
+  public removeTarget(targetEntryPoint: FilePath<'absolute'>, flag: string | null = null) {
     const hash = this.getInternalHashFromPath(targetEntryPoint, flag);
 
     delete this._targets[hash];
   }
 
-  public getInternalHashFromPath(filePath: string, targetFlag: string | null = null) {
+  public getInternalHashFromPath(filePath: FilePath<'absolute'>, targetFlag: string | null = null) {
     let hash: string;
 
     if (targetFlag !== null) {
@@ -80,7 +81,7 @@ export class CrxmBundler implements I_CrxmBundler {
     return hash;
   }
 
-  public getBuildResultFromPath(filePath: string): Uint8Array | undefined {
+  public getBuildResultFromPath(filePath: FilePath<'absolute'>): Uint8Array | undefined {
     const hash = this.getInternalHashFromPath(filePath);
     return this._compileResults[hash];
   }
@@ -150,7 +151,7 @@ export class CrxmBundler implements I_CrxmBundler {
         const filePath = absolutePaths[hash];
         this.logger.dispatchDebug(filePath);
 
-        const onEndFirstBuild = (result: Uint8Array) => {
+        const onEndFirstBuild = () => {
           const newHashs = notSucceedFirstBuildHashs.filter((h) => h !== hash);
           notSucceedFirstBuildHashs = newHashs;
 
@@ -255,12 +256,18 @@ export class CrxmBundler implements I_CrxmBundler {
    */
   private async getTargetAbsolutePaths() {
     const path = this.configLoader.useConfigPath();
-    const projectDir = dirname(path);
+    const projectDir = absoluteGuard(dirname(path));
 
-    const paths: Record<string, { entryPoint: string; absolute: string }> = {};
+    const paths: Record<
+      string,
+      {
+        entryPoint: FilePath;
+        absolute: FilePath<'absolute'>;
+      }
+    > = {};
     Object.keys(this._targets).map((hash) => {
       const { entryPoint } = this._targets[hash];
-      paths[hash] = { absolute: resolve(projectDir, entryPoint), entryPoint };
+      paths[hash] = { absolute: absoluteGuard(resolve(projectDir, entryPoint)), entryPoint };
     });
 
     return paths;

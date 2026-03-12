@@ -1,8 +1,9 @@
 import { inject, injectable } from 'inversify';
-import { CrxmManifestImportantKeyRequired } from 'src/node/typeDefs';
+import { CrxmManifestImportantKeyRequired, FilePath } from 'src/node/typeDefs';
 import { TYPES } from '../types';
 import type { I_ConfigLoader } from '../ConfigLoader';
 import { dirname, resolve } from 'path';
+import { absoluteGuard } from '../file';
 
 export interface I_ManifestParser {
   parse(manifest: CrxmManifestImportantKeyRequired): ParseResult | null;
@@ -58,16 +59,16 @@ export class ManifestParser implements I_ManifestParser {
       const result: Record<
         number,
         {
-          raw: string;
-          path: string;
+          raw: FilePath<'absolute' | 'relative'>;
+          path: FilePath<'absolute'>;
           size: number;
         }
       > = {};
       Object.keys(icons).map((size) => {
         const sizeN = size as unknown as number;
-        const filePathRelative = icons[sizeN];
+        const filePathRelative = icons[sizeN] as FilePath;
 
-        const absolute = resolve(filePathRelative);
+        const absolute = absoluteGuard(resolve(filePathRelative));
 
         result[sizeN] = {
           raw: filePathRelative,
@@ -85,44 +86,46 @@ export class ManifestParser implements I_ManifestParser {
    * @returns
    */
   private getAllResources(manifest: CrxmManifestImportantKeyRequired): Resources {
-    const confPath = this.configLoader.useConfigPath();
-    const projectDir = dirname(confPath);
+    const confPath: FilePath<'absolute'> = this.configLoader.useConfigPath();
+    const projectDir = absoluteGuard(dirname(confPath));
 
-    const sw: string[] = [];
-    const contentResources: string[] = [];
-    const cssResources: string[] = [];
+    const sw: FilePath<'absolute'>[] = [];
+    const contentResources: FilePath<'absolute'>[] = [];
+    const cssResources: FilePath<'absolute'>[] = [];
+    const popupHtml: FilePath<'absolute'>[] = [];
 
-    const swRaw: string[] = [];
-    const contentResourcesRaw: string[] = [];
-    const cssResourcesRaw: string[] = [];
-
-    const popupHtml: string[] = [];
-    const popupHtmlRaw: string[] = [];
+    const swRaw: FilePath<'relative' | 'absolute'>[] = [];
+    const contentResourcesRaw: FilePath<'relative' | 'absolute'>[] = [];
+    const cssResourcesRaw: FilePath<'relative' | 'absolute'>[] = [];
+    const popupHtmlRaw: FilePath<'relative' | 'absolute'>[] = [];
 
     if (manifest?.background?.service_worker !== undefined) {
-      swRaw.push(manifest.background.service_worker);
-      sw.push(resolve(projectDir, manifest.background.service_worker));
+      swRaw.push(manifest.background.service_worker as FilePath);
+      sw.push(absoluteGuard(resolve(projectDir, manifest.background.service_worker)));
     }
 
     if (manifest?.action?.default_popup !== undefined) {
-      popupHtmlRaw.push(manifest.action.default_popup);
-      popupHtml.push(resolve(projectDir, manifest.action.default_popup));
+      popupHtmlRaw.push(manifest.action.default_popup as FilePath);
+      popupHtml.push(absoluteGuard(resolve(projectDir, manifest.action.default_popup)));
     }
 
     manifest.content_scripts.forEach(({ js, css }) => {
       if (js !== undefined) {
         js.map((p) => {
-          if (!contentResourcesRaw.includes(p)) {
-            contentResourcesRaw.push(p);
-            contentResources.push(resolve(projectDir, p));
+          const path = p as FilePath;
+          if (!contentResourcesRaw.includes(path)) {
+            contentResourcesRaw.push(path);
+            contentResources.push(absoluteGuard(resolve(projectDir, path)));
           }
         });
       }
       if (css !== undefined) {
         css.map((p) => {
-          if (!cssResourcesRaw.includes(p)) {
-            cssResourcesRaw.push(p);
-            cssResources.push(resolve(projectDir, p));
+          const path = p as FilePath;
+
+          if (!cssResourcesRaw.includes(path)) {
+            cssResourcesRaw.push(path);
+            cssResources.push(absoluteGuard(resolve(projectDir, p)));
           }
         });
       }
@@ -156,17 +159,17 @@ export type Resources = {
    * Absolute file paths of all script source.
    */
   scriptResources: {
-    sw: string[];
-    content: string[];
+    sw: FilePath<'absolute'>[];
+    content: FilePath<'absolute'>[];
   };
   /**
    * Absolute file paths of all style source.
    */
-  cssResources: string[];
+  cssResources: FilePath<'absolute'>[];
   /**
    * html
    */
-  htmlResources: { popup: string[] };
+  htmlResources: { popup: FilePath<'absolute'>[] };
   /**
    * Raw file path written in manifest
    */
@@ -175,17 +178,17 @@ export type Resources = {
      * Raw file paths of all script source source written in manifest
      */
     scriptResources: {
-      sw: string[];
-      content: string[];
+      sw: FilePath<'absolute' | 'relative'>[];
+      content: FilePath<'absolute' | 'relative'>[];
     };
     /**
      * Raw file paths of all style source written in manifest
      */
-    cssResources: string[];
+    cssResources: FilePath<'absolute' | 'relative'>[];
     /**
      * html
      */
-    htmlResources: { popup: string[] };
+    htmlResources: { popup: FilePath<'absolute' | 'relative'>[] };
   };
 };
 
@@ -194,8 +197,8 @@ export type ParseResult = {
   icons: Record<
     number,
     {
-      raw: string;
-      path: string;
+      raw: FilePath<'absolute' | 'relative'>;
+      path: FilePath<'absolute'>;
       size: number;
     }
   > | null;

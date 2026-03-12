@@ -1,5 +1,5 @@
-import { CrxmManifestImportantKeyRequired } from 'src/node/typeDefs';
-import { isTs, noCacheImport, noCacheImportTs, resolveFilePath } from '../file';
+import { CrxmManifestImportantKeyRequired, FilePath } from 'src/node/typeDefs';
+import { absoluteGuard, isTs, noCacheImport, noCacheImportTs, resolveFilePath } from '../file';
 import { resolve, dirname } from 'path';
 import { inject, injectable } from 'inversify';
 import type { I_ConfigLoader } from '../ConfigLoader';
@@ -17,14 +17,14 @@ export interface I_ManifestLoader {
 @injectable()
 export class ManifestLoader implements I_ManifestLoader {
   private loadedManifest: null | CrxmManifestImportantKeyRequired = null;
-  public readonly manifestPath: string;
+  public readonly manifestPath: FilePath<'absolute'>;
 
   constructor(@inject(TYPES.ConfigLoader) private readonly configLoader: I_ConfigLoader) {
     // Get manifest file path.
     const config = this.configLoader.useConfig();
     const confPath = this.configLoader.useConfigPath();
     const projectDir = dirname(confPath);
-    this.manifestPath = resolve(projectDir, config.manifest);
+    this.manifestPath = absoluteGuard(resolve(projectDir, config.manifest));
   }
 
   /**
@@ -34,6 +34,7 @@ export class ManifestLoader implements I_ManifestLoader {
   public async loadManifest() {
     // Get manfest path\
     const resolvedManifestPath = resolveFilePath(this.manifestPath);
+    const manifestDir = absoluteGuard(dirname(resolvedManifestPath));
 
     if (!(await exists(resolvedManifestPath))) {
       throw new Error(`The manifest does not exist "${this.manifestPath}".`);
@@ -43,12 +44,12 @@ export class ManifestLoader implements I_ManifestLoader {
     if (isTs(resolvedManifestPath)) {
       importManifest = noCacheImportTs<{ default: CrxmManifestImportantKeyRequired }>(
         resolvedManifestPath,
-        dirname(resolvedManifestPath),
+        manifestDir,
       );
     } else {
       importManifest = noCacheImport<{ default: CrxmManifestImportantKeyRequired }>(
         resolvedManifestPath,
-        dirname(resolvedManifestPath),
+        manifestDir,
       );
     }
 

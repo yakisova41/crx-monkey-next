@@ -1,5 +1,7 @@
+import { FilePath } from '../typeDefs';
+
 export class Codeblock {
-  private _filePath: string;
+  private _filePath: FilePath<'absolute'>;
   private _content: Uint8Array;
   private _funcName: string;
   protected buildId: string;
@@ -16,7 +18,7 @@ export class Codeblock {
     return this._funcName;
   }
 
-  constructor(filePath: string, content: Uint8Array, buildId: string) {
+  constructor(filePath: FilePath<'absolute'>, content: Uint8Array, buildId: string) {
     this._filePath = filePath;
     this._content = content;
     this._funcName = convertFilePathToFuncName(this._filePath);

@@ -3,35 +3,30 @@ import { TYPES } from './types';
 import { ManifestLoader } from './manifest/ManifestLoader';
 import { ManifestParser } from './manifest/ManifestParser';
 import { ConfigLoader } from './ConfigLoader';
-import { Watcher } from './Watcher';
 import { CrxmBundler } from './CrxmBundler';
-import { dirname, resolve } from 'path';
 import chalk from 'chalk';
 import { Logger } from './Logger';
 import { Distributior } from './Distributior';
 import { Popup } from './popup/Popup';
-import { CrxmBundlerPlugin, CrxmBundlerPluginWatch } from './typeDefs';
+import { CrxmBundlerPlugin, CrxmBundlerPluginWatch, FilePath } from './typeDefs';
 
 export interface I_BundlerRegisterer {}
 
 @injectable()
 export class BundlerRegisterer implements I_BundlerRegisterer {
-  private contentScripts: string[] = [];
-  private sw: string[] = [];
-  private cssResources: string[] = [];
-  private htmlResources: string[] = [];
+  private contentScripts: FilePath<'absolute'>[] = [];
+  private sw: FilePath<'absolute'>[] = [];
+  private cssResources: FilePath<'absolute'>[] = [];
+  private htmlResources: FilePath<'absolute'>[] = [];
 
   constructor(
     @inject(TYPES.ManifestLoader) private readonly manifestLoader: ManifestLoader,
     @inject(TYPES.ManifestParser) private readonly manifestParser: ManifestParser,
     @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
-    @inject(TYPES.Watcher) private readonly watcher: Watcher,
     @inject(TYPES.CrxmBundler) private readonly bundler: CrxmBundler,
     @inject(TYPES.Logger) private readonly logger: Logger,
     @inject(TYPES.Popup) private readonly popup: Popup,
-    @inject(TYPES.IsWatch) private readonly isWatch: boolean,
     @inject(TYPES.Distributior) private readonly distributior: Distributior,
-    @inject(TYPES.BuildID) private readonly buildId: string,
   ) {}
 
   /**
@@ -43,7 +38,7 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     /**
      * Add added targets to bundle targets.
      */
-    const addTargetGroups: [string, string[]][] = [
+    const addTargetGroups: [string, FilePath<'absolute'>[]][] = [
       ['content', fileChangeResult.script.content.added],
       ['sw', fileChangeResult.script.sw.added],
       ['css', fileChangeResult.css.added],
@@ -73,7 +68,7 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     /**
      * Remove removed targets from bundle targets.
      */
-    const rmTargetGroups: [string, string[]][] = [
+    const rmTargetGroups: [string, FilePath<'absolute'>[]][] = [
       ['content', fileChangeResult.script.content.removed],
       ['sw', fileChangeResult.script.sw.removed],
       ['css', fileChangeResult.css.removed],
@@ -150,8 +145,6 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
    */
   private fileChangeCheck() {
     const manifest = this.manifestLoader.useManifest();
-    const confPath = this.configLoader.useConfigPath();
-    const projectDir = dirname(confPath);
 
     const parsed = this.manifestParser.parse(manifest);
 
@@ -166,14 +159,10 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     /**
      * content Script
      */
-    const contentResourcesAbsoluted = content.map((scriptPath) => {
-      return resolve(projectDir, scriptPath);
-    });
+    const contentScriptAdded: FilePath<'absolute'>[] = [];
+    const contentScriptRemoved: FilePath<'absolute'>[] = [];
 
-    const contentScriptAdded: string[] = [];
-    const contentScriptRemoved: string[] = [];
-
-    contentResourcesAbsoluted.forEach((absolutePath) => {
+    content.forEach((absolutePath) => {
       if (!this.contentScripts.includes(absolutePath)) {
         // It's new file
         this.contentScripts.push(absolutePath);
@@ -185,7 +174,7 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     });
 
     this.contentScripts.forEach((absolutePath) => {
-      if (!contentResourcesAbsoluted.includes(absolutePath)) {
+      if (!content.includes(absolutePath)) {
         // It's removed file
         this.contentScripts = this.contentScripts.filter((x) => x !== absolutePath);
         contentScriptRemoved.push(absolutePath);
@@ -198,14 +187,10 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     /**
      * sw
      */
-    const swResourcesAbsoluted = sw.map((scriptPath) => {
-      return resolve(projectDir, scriptPath);
-    });
+    const swAdded: FilePath<'absolute'>[] = [];
+    const swRemoved: FilePath<'absolute'>[] = [];
 
-    const swAdded: string[] = [];
-    const swRemoved: string[] = [];
-
-    swResourcesAbsoluted.forEach((absolutePath) => {
+    sw.forEach((absolutePath) => {
       if (!this.sw.includes(absolutePath)) {
         // It's new file
         this.sw.push(absolutePath);
@@ -217,7 +202,7 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     });
 
     this.sw.forEach((absolutePath) => {
-      if (!swResourcesAbsoluted.includes(absolutePath)) {
+      if (!sw.includes(absolutePath)) {
         // It's removed file
         this.sw = this.sw.filter((x) => x !== absolutePath);
         swRemoved.push(absolutePath);
@@ -230,14 +215,10 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     /**
      * CSS
      */
-    const cssResourcesAbsoluted = cssResources.map((scriptPath) => {
-      return resolve(projectDir, scriptPath);
-    });
+    const cssAdded: FilePath<'absolute'>[] = [];
+    const cssRemoved: FilePath<'absolute'>[] = [];
 
-    const cssAdded: string[] = [];
-    const cssRemoved: string[] = [];
-
-    cssResourcesAbsoluted.forEach((absolutePath) => {
+    cssResources.forEach((absolutePath) => {
       if (!this.cssResources.includes(absolutePath)) {
         // It's new file
         this.cssResources.push(absolutePath);
@@ -247,7 +228,7 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     });
 
     this.cssResources.forEach((absolutePath) => {
-      if (!cssResourcesAbsoluted.includes(absolutePath)) {
+      if (!cssResources.includes(absolutePath)) {
         // It's removed file
         this.cssResources = this.cssResources.filter((x) => x !== absolutePath);
         cssRemoved.push(absolutePath);
@@ -260,14 +241,10 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     /**
      * html
      */
-    const htmlResourcesAbsoluted = htmlResources.popup.map((htmlPath) => {
-      return resolve(projectDir, htmlPath);
-    });
+    const htmlAdded: FilePath<'absolute'>[] = [];
+    const htmlRemoved: FilePath<'absolute'>[] = [];
 
-    const htmlAdded: string[] = [];
-    const htmlRemoved: string[] = [];
-
-    htmlResourcesAbsoluted.forEach((absolutePath) => {
+    htmlResources.popup.forEach((absolutePath) => {
       if (!this.htmlResources.includes(absolutePath)) {
         // It's new file
         this.htmlResources.push(absolutePath);
@@ -277,7 +254,7 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     });
 
     this.htmlResources.forEach((absolutePath) => {
-      if (!htmlResourcesAbsoluted.includes(absolutePath)) {
+      if (!htmlResources.popup.includes(absolutePath)) {
         // It's removed file
         this.htmlResources = this.htmlResources.filter((x) => x !== absolutePath);
         htmlRemoved.push(absolutePath);

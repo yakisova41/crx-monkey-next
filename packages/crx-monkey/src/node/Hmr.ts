@@ -5,7 +5,7 @@ import {
   SockServerRequestSendResult,
   SockServerResponseSendResult,
 } from './server/SockServer';
-import { I_HMR } from './typeDefs';
+import { FilePath, I_HMR } from './typeDefs';
 import { ConfigLoader } from './ConfigLoader';
 import fse from 'fs-extra';
 import { resolve } from 'path';
@@ -53,7 +53,7 @@ export class HMR implements I_HMR {
     });
   }
 
-  public async dispatchResult(entry: string, buildResult: Uint8Array) {
+  public async dispatchResult(entry: FilePath<'absolute'>, buildResult: Uint8Array) {
     const {
       output: { chrome },
     } = this.configLoader.useConfig();
@@ -89,7 +89,7 @@ export class HMR implements I_HMR {
     })();
   }
 
-  public getCacheFileName(entry: string) {
+  public getCacheFileName(entry: FilePath<'absolute'>) {
     const endemicHash = MurmurHash3.x86.hash32(entry).toString();
 
     const cacheFileName = `hmr_cache_${endemicHash}.js`;

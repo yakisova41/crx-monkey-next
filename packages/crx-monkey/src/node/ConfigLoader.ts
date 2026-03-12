@@ -1,13 +1,13 @@
-import { isTs, noCacheImport, noCacheImportTs, resolveFilePath } from './file';
-import { CrxmConfigRequired } from 'src/node/typeDefs';
+import { absoluteGuard, isTs, noCacheImport, noCacheImportTs, resolveFilePath } from './file';
+import { CrxmConfigRequired, FilePath } from 'src/node/typeDefs';
 import { injectable } from 'inversify';
-import { dirname } from 'path';
+import { dirname, resolve as pathResolve } from 'path';
 import { promises } from 'fs';
 
 export interface I_ConfigLoader {
   loadConfig(): Promise<void>;
   useConfig(): CrxmConfigRequired;
-  useConfigPath(): string;
+  useConfigPath(): FilePath<'absolute'>;
 }
 
 /**
@@ -17,7 +17,7 @@ export interface I_ConfigLoader {
 export class ConfigLoader implements I_ConfigLoader {
   public static configFileNamePatterns = ['crxm.config.js', 'crxm.config.ts'];
   private loadedConfig: CrxmConfigRequired | null = null;
-  private configPath: string | null = null;
+  private configPath: FilePath<'absolute'> | null = null;
 
   /**
    * Load config from project
@@ -56,13 +56,13 @@ export class ConfigLoader implements I_ConfigLoader {
    * Get the path of config file deeply.
    * @returns
    */
-  private async searchConfig(): Promise<string> {
+  private async searchConfig(): Promise<FilePath<'absolute'>> {
     return await new Promise((resolve, reject) => {
       let dir = process.cwd();
 
       const searchThen = (result: string | null): void => {
         if (result !== null) {
-          resolve(dir + '/' + result);
+          resolve(absoluteGuard(pathResolve(dir, result)));
         } else {
           const splited = dir.split('/');
 
@@ -104,20 +104,21 @@ export class ConfigLoader implements I_ConfigLoader {
    * Import config file then set to value.
    * @param confPath
    */
-  private async loadConfigDetail(confPath: string) {
+  private async loadConfigDetail(confPath: FilePath<'absolute'>) {
     const configAbsolutePath = resolveFilePath(confPath);
+    const configDir = absoluteGuard(dirname(configAbsolutePath));
 
     let buildConfig;
 
     if (isTs(configAbsolutePath)) {
       buildConfig = await noCacheImportTs<{ default: CrxmConfigRequired }>(
         configAbsolutePath,
-        dirname(configAbsolutePath),
+        configDir,
       );
     } else {
       buildConfig = await noCacheImport<{ default: CrxmConfigRequired }>(
         configAbsolutePath,
-        dirname(configAbsolutePath),
+        configDir,
       );
     }
 
@@ -132,15 +133,5 @@ export class ConfigLoader implements I_ConfigLoader {
     }
     this.loadedConfig = exportedConfig;
     this.configPath = confPath;
-  }
-
-  /**
-   * Is typescript file
-   * @param filepath
-   * @returns
-   */
-  private isTs(filepath: string) {
-    const s = filepath.split('.');
-    return s[s.length - 1] === 'ts' ? true : false;
   }
 }

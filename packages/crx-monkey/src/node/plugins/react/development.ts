@@ -6,10 +6,11 @@ import {
   SockServerResponseReload,
   SockServerResponseSendResult,
 } from 'src/node/server/SockServer';
+import { FilePath } from 'src/node/typeDefs';
 
 export async function developmentReact(
   websocketAddress: `ws://${string}:${string}`,
-  entryPoint: string,
+  entryPoint: FilePath<'absolute'>,
   cacheFileName: string,
 ) {
   const ws = new WebSocket(websocketAddress);
@@ -57,7 +58,7 @@ export async function developmentReact(
       if (data.content.reloadType === 'HMR_' + entryPoint) {
         const {
           content: {
-            data: { js, fileName },
+            data: { js, entryPoint },
           },
         } = response as SockServerResponse<SockServerResponseHMRReload>;
 
@@ -67,7 +68,7 @@ export async function developmentReact(
           // userjs
           await loadByString(js);
         } else {
-          await loadFile(fileName);
+          await loadFile(entryPoint);
         }
       }
     }

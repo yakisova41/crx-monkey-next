@@ -6,6 +6,8 @@ import { FSWatcher, watch } from 'fs';
 import { dirname, resolve } from 'path';
 import chalk from 'chalk';
 import { Logger } from './Logger';
+import { FilePath } from './typeDefs';
+import { absoluteGuard } from './file';
 
 export interface I_Watcher {
   start(): Promise<void>;
@@ -19,7 +21,7 @@ export interface I_Watcher {
  */
 @injectable()
 export class Watcher implements I_Watcher {
-  private readonly configPath: string;
+  private readonly configPath: FilePath<'absolute'>;
   private configWatcher: FSWatcher | null = null;
   private manifestWatcher: FSWatcher | null = null;
   private updateHandlers: UpdateHandler[] = [];
@@ -87,7 +89,7 @@ export class Watcher implements I_Watcher {
    * Watching manifest file in project
    * @param manifestPath
    */
-  private startManifestWatch(manifestPath: string) {
+  private startManifestWatch(manifestPath: FilePath<'absolute'>) {
     if (this.manifestWatcher !== null) {
       throw new Error('The manifest watching is running now, stop it before using start.');
     }
@@ -157,8 +159,8 @@ export class Watcher implements I_Watcher {
    */
   private getManifestPath() {
     const confPath = this.configLoader.useConfigPath();
-    const projectDir = dirname(confPath);
-    const manifestPath = resolve(projectDir, this.configLoader.useConfig().manifest);
+    const projectDir = absoluteGuard(dirname(confPath));
+    const manifestPath = absoluteGuard(resolve(projectDir, this.configLoader.useConfig().manifest));
     return manifestPath;
   }
 }

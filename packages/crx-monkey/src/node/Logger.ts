@@ -5,6 +5,7 @@ import { TYPES } from './types';
 import { ConfigLoader } from './ConfigLoader';
 import packageJ from '../../package.json';
 import { dirname, resolve } from 'path';
+import { absoluteGuard } from './file';
 
 @injectable()
 export class Logger {
@@ -23,7 +24,7 @@ export class Logger {
       throw new Error('');
     }
 
-    const chromePathAbsolute = resolve(dirname(manifest), chrome);
+    const chromePathAbsolute = absoluteGuard(resolve(dirname(manifest), chrome));
 
     console.log(`\n  ${chalk.cyanBright('CRX MONEKY')} v${packageJ.version}`);
     console.log(

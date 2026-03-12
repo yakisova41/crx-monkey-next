@@ -5,6 +5,8 @@ import consola from 'consola';
 import { container } from '../inversify.config';
 import { ConfigLoader } from '../ConfigLoader';
 import { TYPES } from '../types';
+import { absoluteGuard } from '../file';
+import { FilePath } from '../typeDefs';
 
 /**
  * Get all messages each language in a locale dir in the project.
@@ -43,7 +45,7 @@ export async function geti18nMessages(key: string) {
  */
 export async function getMessage(langKey: string, key: string) {
   const localesPath = getlocalesPath();
-  const messagesJsonPath = path.resolve(localesPath, langKey, 'messages.json');
+  const messagesJsonPath = absoluteGuard(path.resolve(localesPath, langKey, 'messages.json'));
 
   const messagesJson: Record<string, { message: string }> =
     await fsExtra.readJSON(messagesJsonPath);
@@ -62,7 +64,7 @@ export async function getMessage(langKey: string, key: string) {
  * @param localesPath
  * @returns Exist languages in a locale dir in the project.
  */
-export function getEnableLangs(localesPath: string) {
+export function getEnableLangs(localesPath: FilePath<'absolute'>) {
   const langs = fs.readdirSync(localesPath);
 
   if (!langs.includes('en')) {
@@ -77,7 +79,7 @@ export function getlocalesPath() {
 
   const dir = path.dirname(config.manifest);
 
-  return path.resolve(dir, '_locales');
+  return absoluteGuard(path.resolve(dir, '_locales'));
 }
 
 /**
