@@ -298,9 +298,9 @@ export class Distributior {
       const extChanged = this.changeExt(sourceFilePath, 'js');
       const endemicHash = MurmurHash3.x86.hash32(sourceFilePath).toString();
 
-      const fileName = endemicHash + '_' + extChanged;
+      const fileName = (endemicHash + '_' + extChanged) as FilePath<'relative'>;
 
-      const outputPath = resolve(distFilepath, fileName);
+      const outputPath = absoluteGuard(resolve(distFilepath, fileName));
 
       const decoder = new TextDecoder();
 
@@ -340,7 +340,7 @@ export class Distributior {
     const extChanged = this.changeExt(sourcePath, 'js');
     const endemicHash = MurmurHash3.x86.hash32(sourcePath).toString();
 
-    const fileName = endemicHash + '_' + extChanged;
+    const fileName = (endemicHash + '_' + extChanged) as FilePath<'relative'>;
 
     const outputPath = absoluteGuard(resolve(distFilepath, fileName));
 
@@ -402,7 +402,7 @@ export class Distributior {
     const extChanged = this.changeExt(sourcePath, 'css');
     const endemicHash = MurmurHash3.x86.hash32(sourcePath).toString();
 
-    const fileName = endemicHash + '_' + extChanged;
+    const fileName = (endemicHash + '_' + extChanged) as FilePath<'relative'>;
 
     const outputPath = absoluteGuard(resolve(distFilepath, fileName));
 
@@ -542,12 +542,14 @@ export class Distributior {
       await Promise.all(
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         Object.entries(icons).map(async ([_key, { raw, path }]) => {
-          const fileName = basename(path);
+          const fileName = basename(path) as FilePath<'relative'>;
           const output = absoluteGuard(
             resolve(distPath, `${this.publicDirInDist}/icons/`, fileName),
           );
           await fsExtra.copy(path, output);
-          this.manifestFactory.resolve(raw, `${this.publicDirInDist}/icons/` + fileName);
+
+          const iconPath = (`${this.publicDirInDist}/icons/` + fileName) as FilePath<'relative'>;
+          this.manifestFactory.resolve(raw, iconPath);
         }),
       );
     }
