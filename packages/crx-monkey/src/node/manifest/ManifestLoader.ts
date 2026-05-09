@@ -1,10 +1,10 @@
 import { CrxmManifestImportantKeyRequired, FilePath } from 'src/node/typeDefs';
-import { absoluteGuard, isTs, noCacheImport, noCacheImportTs, resolveFilePath } from '../file';
+import { absoluteGuard, resolveFilePath } from '../file';
 import { resolve, dirname } from 'path';
 import { inject, injectable } from 'inversify';
 import type { I_ConfigLoader } from '../ConfigLoader';
 import { TYPES } from '../types';
-import { exists } from 'fs-extra';
+import type { I_FileSystem } from '../FileSystem';
 
 export interface I_ManifestLoader {
   loadManifest(): Promise<void>;
@@ -19,7 +19,10 @@ export class ManifestLoader implements I_ManifestLoader {
   private loadedManifest: null | CrxmManifestImportantKeyRequired = null;
   public readonly manifestPath: FilePath<'absolute'>;
 
-  constructor(@inject(TYPES.ConfigLoader) private readonly configLoader: I_ConfigLoader) {
+  constructor(
+    @inject(TYPES.ConfigLoader) private readonly configLoader: I_ConfigLoader,
+    @inject(TYPES.FileSystem) private readonly fs: I_FileSystem,
+  ) {
     // Get manifest file path.
     const config = this.configLoader.useConfig();
     const confPath = this.configLoader.useConfigPath();
@@ -36,22 +39,14 @@ export class ManifestLoader implements I_ManifestLoader {
     const resolvedManifestPath = resolveFilePath(this.manifestPath);
     const manifestDir = absoluteGuard(dirname(resolvedManifestPath));
 
-    if (!(await exists(resolvedManifestPath))) {
+    if (!(await this.fs.exists(resolvedManifestPath))) {
       throw new Error(`The manifest does not exist "${this.manifestPath}".`);
     }
 
-    let importManifest;
-    if (isTs(resolvedManifestPath)) {
-      importManifest = noCacheImportTs<{ default: CrxmManifestImportantKeyRequired }>(
-        resolvedManifestPath,
-        manifestDir,
-      );
-    } else {
-      importManifest = noCacheImport<{ default: CrxmManifestImportantKeyRequired }>(
-        resolvedManifestPath,
-        manifestDir,
-      );
-    }
+    const importManifest = this.fs.noCacheImport<{ default: CrxmManifestImportantKeyRequired }>(
+      resolvedManifestPath,
+      manifestDir,
+    );
 
     await importManifest.then((manifest) => {
       const exportedManifest = manifest.default as CrxmManifestImportantKeyRequired;

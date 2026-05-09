@@ -2,7 +2,6 @@ import { inject, injectable } from 'inversify';
 import { TYPES } from './types';
 import { dirname, resolve } from 'path';
 import { absoluteGuard, resolveFilePath } from './file';
-import fse from 'fs-extra';
 import { ConfigLoader } from './ConfigLoader';
 import {
   BuildTarget,
@@ -16,6 +15,7 @@ import {
 import chalk from 'chalk';
 import { Logger } from './Logger';
 import { HMR } from './Hmr';
+import type { I_FileSystem } from './FileSystem';
 
 /**
  * Manage all bundler
@@ -31,6 +31,7 @@ export class CrxmBundler implements I_CrxmBundler {
     @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
     @inject(TYPES.Logger) private readonly logger: Logger,
     @inject(TYPES.Hmr) private readonly _hmr: HMR,
+    @inject(TYPES.FileSystem) private readonly fs: I_FileSystem,
   ) {}
 
   public get hmr() {
@@ -172,7 +173,7 @@ export class CrxmBundler implements I_CrxmBundler {
     const absolutePath = resolveFilePath(absolutePaths[hash].absolute);
     const { usingPlugin } = this._targets[hash];
 
-    if (await fse.exists(absolutePath)) {
+    if (await this.fs.exists(absolutePath)) {
       const { plugin, name } = usingPlugin.watch;
 
       let isFirst = true;
@@ -237,7 +238,7 @@ export class CrxmBundler implements I_CrxmBundler {
         const absolutePath = resolveFilePath(absolutePaths[hash].absolute);
         const { usingPlugin } = this._targets[hash];
 
-        if (await fse.exists(absolutePath)) {
+        if (await this.fs.exists(absolutePath)) {
           compileResults[hash] = await usingPlugin.build.plugin(absolutePath, this);
           this.logger.dispatchDebug(`✨ [${usingPlugin.build.name}] Build successful!`);
         } else {

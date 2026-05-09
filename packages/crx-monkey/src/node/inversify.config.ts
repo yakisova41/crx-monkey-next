@@ -18,6 +18,8 @@ import { CreateDevClient } from './development/CreateDevClient';
 import { FileServer } from './server/FileServer';
 import { Popup } from './popup/Popup';
 import { HMR } from './Hmr';
+import { I_FileSystem, FileSystem } from './FileSystem';
+import { I18n, I_I18n } from './manifest/I18n';
 
 /**
  * DI container
@@ -28,8 +30,10 @@ export const container: Container = new Container();
  * Classes
  */
 container.bind<Logger>(TYPES.Logger).to(Logger).inSingletonScope();
-container.bind<ConfigLoader>(TYPES.ConfigLoader).to(ConfigLoader).inSingletonScope();
+container.bind<I_FileSystem>(TYPES.FileSystem).to(FileSystem).inSingletonScope();
+container.bind<I_I18n>(TYPES.I18n).to(I18n).inSingletonScope();
 
+container.bind<ConfigLoader>(TYPES.ConfigLoader).to(ConfigLoader).inSingletonScope();
 container.bind<ManifestLoader>(TYPES.ManifestLoader).to(ManifestLoader).inSingletonScope();
 container.bind<ManifestParser>(TYPES.ManifestParser).to(ManifestParser).inSingletonScope();
 container.bind<CrxmBundler>(TYPES.CrxmBundler).to(CrxmBundler).inSingletonScope();

@@ -2,12 +2,13 @@ import { inject, injectable } from 'inversify';
 import { TYPES } from './types';
 import { ConfigLoader } from './ConfigLoader';
 import { ManifestLoader } from './manifest/ManifestLoader';
-import { FSWatcher, watch } from 'fs';
 import { dirname, resolve } from 'path';
 import chalk from 'chalk';
 import { Logger } from './Logger';
 import { FilePath } from './typeDefs';
 import { absoluteGuard } from './file';
+import type { I_FileSystem } from './FileSystem';
+import type { FSWatcher } from 'fs-extra';
 
 export interface I_Watcher {
   start(): Promise<void>;
@@ -30,6 +31,7 @@ export class Watcher implements I_Watcher {
     @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
     @inject(TYPES.ManifestLoader) private readonly manifestLoader: ManifestLoader,
     @inject(TYPES.Logger) private readonly logger: Logger,
+    @inject(TYPES.FileSystem) private readonly fs: I_FileSystem,
   ) {
     this.configPath = this.configLoader.useConfigPath();
   }
@@ -42,7 +44,7 @@ export class Watcher implements I_Watcher {
     if (this.configWatcher !== null) {
       throw new Error('The config watching is running now, stop it before using start.');
     }
-    this.configWatcher = watch(this.configPath);
+    this.configWatcher = this.fs.watch(this.configPath);
 
     const stack: (() => Promise<void>)[] = [];
 
@@ -93,7 +95,7 @@ export class Watcher implements I_Watcher {
     if (this.manifestWatcher !== null) {
       throw new Error('The manifest watching is running now, stop it before using start.');
     }
-    this.manifestWatcher = watch(manifestPath, {});
+    this.manifestWatcher = this.fs.watch(manifestPath, {});
 
     const stack: (() => Promise<void>)[] = [];
 

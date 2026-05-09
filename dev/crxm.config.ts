@@ -23,5 +23,6 @@ const config = defineConfig({
   build: {
     '\\.(ts|js|jsx|tsx)$': tsBundler({ esbuild: { plugins: [esbuildCSSPlugin()] } }),
   },
+  logLevel: 'debug',
 });
 export default config;

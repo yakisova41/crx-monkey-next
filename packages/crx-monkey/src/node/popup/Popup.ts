@@ -2,16 +2,16 @@ import { inject, injectable } from 'inversify';
 import type { CrxmBundlerPlugin, CrxmBundlerPluginWatch } from '../typeDefs';
 import { TYPES } from '../types';
 import { parse, HTMLElement, Node, NodeType } from 'node-html-parser';
-import fse from 'fs-extra';
 import { ConfigLoader } from '../ConfigLoader';
 import { basename, dirname, resolve } from 'path';
 import { CrxmBundler } from '../CrxmBundler';
 import MurmurHash3 from 'murmurhash3js';
 import { ManifestFactory } from '../manifest/ManifestFactory';
-import { fileToDataUri } from '../file';
 import { htmlBundler, htmlBundlerWatch } from '../plugins/htmlBundler';
 import { Logger } from '../Logger';
 import chalk from 'chalk';
+import type { I_FileSystem } from '../FileSystem';
+import { absoluteGuard } from '../file';
 
 @injectable()
 export class Popup {
@@ -38,6 +38,7 @@ export class Popup {
     @inject(TYPES.ManifestFactory) private readonly manifestFactory: ManifestFactory,
     @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
     @inject(TYPES.Logger) private readonly logger: Logger,
+    @inject(TYPES.FileSystem) private readonly fs: I_FileSystem,
   ) {
     const {
       build,
@@ -72,7 +73,7 @@ export class Popup {
   }
 
   public async remove(htmlEntry: string) {
-    if (this.entry !== null && (await fse.exists(this.entry))) {
+    if (this.entry !== null && (await this.fs.exists(this.entry))) {
       const assets: PopupBuilderAssets = {
         scripts: [],
         hrefFiles: [],
@@ -80,7 +81,7 @@ export class Popup {
       };
       const diff = this.getDiffFromAssets(assets, this.assets);
 
-      await fse.remove(this.entry);
+      await this.fs.remove(this.entry);
       await this.syncBundler(htmlEntry, diff);
     }
   }
@@ -230,11 +231,11 @@ export class Popup {
         const absolutedNewFilePath = resolve(this.outputDir, 'public', baseFileName);
 
         // unlink
-        if (await fse.exists(absolutedNewFilePath)) {
-          await fse.remove(absolutedNewFilePath);
+        if (await this.fs.exists(absolutedNewFilePath)) {
+          await this.fs.remove(absolutedNewFilePath);
         }
 
-        await fse.copy(resolve(htmlDir, filePath), absolutedNewFilePath, { overwrite: true });
+        await this.fs.copy(resolve(htmlDir, filePath), absolutedNewFilePath, { overwrite: true });
 
         this.resolveAttr(filePath, newFilePath, 'img', 'src', this.parser.extension);
         this.resolveAttr(filePath, newFilePath, 'video', 'src', this.parser.extension);
@@ -249,7 +250,7 @@ export class Popup {
         const baseFileName = basename(filePath);
         const absolutedNewFilePath = resolve(this.outputDir, 'public', baseFileName);
 
-        await fse.remove(absolutedNewFilePath);
+        await this.fs.remove(absolutedNewFilePath);
       }),
     ]);
   }
@@ -270,7 +271,8 @@ export class Popup {
 
     await Promise.all(
       this.diff.srcFiles.add.map(async (filePath: string) => {
-        const content = await fileToDataUri(resolve(htmlDir, filePath));
+        const path = absoluteGuard(resolve(htmlDir, filePath));
+        const content = await this.fs.fileToDataUri(path);
 
         if (content === undefined) {
           throw new Error(
@@ -436,7 +438,7 @@ export class Popup {
    * @returns
    */
   private async getParser(htmlPath: string) {
-    const content = await fse.readFile(htmlPath);
+    const content = await this.fs.readFile(htmlPath);
     const data = content.toString();
     const root = parse(data);
 

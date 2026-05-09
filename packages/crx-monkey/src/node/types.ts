@@ -22,4 +22,6 @@ export const TYPES = {
   CacheDir: Symbol.for('CacheDir'),
   IsWatch: Symbol.for('IsWatch'),
   Hmr: Symbol.for('Hmr'),
+  FileSystem: Symbol.for('I_FileSystem'),
+  I18n: Symbol.for('I_I18n'),
 };

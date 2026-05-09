@@ -4,10 +4,10 @@ import { ManifestFactory } from '../manifest/ManifestFactory';
 import { UserscriptHeaderFactory } from './UserscriptHeader';
 import { ManifestParser } from '../manifest/ManifestParser';
 import { ManifestLoader } from '../manifest/ManifestLoader';
-import fse from 'fs-extra';
-import { geti18nMessages } from '../manifest/i18n';
 import { ConfigLoader } from '../ConfigLoader';
 import { FilePath } from '../typeDefs';
+import type { I_FileSystem } from '../FileSystem';
+import type { I_I18n } from '../manifest/I18n';
 
 @injectable()
 export class UserscriptRegisterer {
@@ -18,6 +18,8 @@ export class UserscriptRegisterer {
     @inject(TYPES.ManifestParser) private readonly manifestParser: ManifestParser,
     @inject(TYPES.ManifestLoader) private readonly manifestLoader: ManifestLoader,
     @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
+    @inject(TYPES.FileSystem) private readonly fs: I_FileSystem,
+    @inject(TYPES.I18n) private readonly i18n: I_I18n,
   ) {}
 
   public async sync() {
@@ -61,7 +63,7 @@ export class UserscriptRegisterer {
      * Set name.
      * If can not found locale message, even if language key is not en, it will be en.
      */
-    const names = await geti18nMessages(rawManifest.name);
+    const names = await this.i18n.geti18nMessages(rawManifest.name);
     Object.keys(names).forEach((lang) => {
       if (lang === 'en') {
         // default is en.
@@ -76,7 +78,7 @@ export class UserscriptRegisterer {
      * If can not found locale message, even if language key is not en, it will be en.
      */
     if (rawManifest.description !== undefined) {
-      const descriptions = await geti18nMessages(rawManifest.description);
+      const descriptions = await this.i18n.geti18nMessages(rawManifest.description);
       Object.keys(descriptions).forEach((lang) => {
         if (lang === 'en') {
           userscriptHeaderFactory.push('@description', descriptions[lang]);
@@ -214,7 +216,7 @@ export class UserscriptRegisterer {
    * @returns
    */
   private convertImgToBase64(imgPath: FilePath<'absolute' | 'relative'>) {
-    const icon = fse.readFileSync(imgPath);
+    const icon = this.fs.readFileSync(imgPath);
     const buf = Buffer.from(icon).toString('base64');
     return `data:image/png;base64,${buf}`;
   }
