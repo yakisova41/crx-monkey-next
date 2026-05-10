@@ -7,7 +7,6 @@ import { ManifestFactory } from './manifest/ManifestFactory';
 import { ConfigLoader } from './ConfigLoader';
 import { basename, dirname, resolve } from 'path';
 import MurmurHash3 from 'murmurhash3js';
-import fsExtra from 'fs-extra';
 import { UserscriptBundler } from './userscript/UserscriptBundler';
 import prettier from 'prettier';
 import { CreateDevClient } from './development/CreateDevClient';
@@ -18,6 +17,7 @@ import { Popup } from './popup/Popup';
 import { stringifyFunction } from './utils';
 import { FilePath } from './typeDefs';
 import { absoluteGuard } from './file';
+import type { I_FileSystem } from './FileSystem';
 
 @injectable()
 export class Distributior {
@@ -41,6 +41,7 @@ export class Distributior {
     @inject(TYPES.IsWatch) private readonly isWatch: boolean,
     @inject(TYPES.BuildID) private readonly buildId: string,
     @inject(TYPES.Popup) private readonly popup: Popup,
+    @inject(TYPES.FileSystem) private readonly fs: I_FileSystem,
   ) {}
 
   public get defines() {
@@ -155,7 +156,7 @@ export class Distributior {
     if (output.chrome !== undefined) {
       const dist = dirname(output.chrome);
 
-      await fsExtra.remove(dist);
+      await this.fs.remove(dist);
     }
   }
 
@@ -206,7 +207,7 @@ export class Distributior {
    */
   private async outputManifest(outputPath: FilePath<'absolute'>) {
     const manifest = this.manifestFactory.getWorkspace();
-    await fsExtra.outputFile(
+    await this.fs.outputFile(
       resolve(outputPath, 'manifest.json'),
       JSON.stringify(manifest, undefined, 2),
     );
@@ -267,7 +268,7 @@ export class Distributior {
           code = code.replace(iifeRegex, `$1\n${varinjection}`);
         }
 
-        await fsExtra.outputFile(outputPath, code);
+        await this.fs.outputFile(outputPath, code);
 
         resolveTarget(fileName);
       }),
@@ -276,7 +277,7 @@ export class Distributior {
     const { contents, outputPath, resolveManifest } = await this.popup.getHTML();
 
     // Output html
-    await fsExtra.outputFile(outputPath, contents);
+    await this.fs.outputFile(outputPath, contents);
     resolveManifest();
 
     this.logger.dispatchDebug(`👋 Output a popup html to dist. ${chalk.gray(`"${outputPath}"`)}`);
@@ -319,7 +320,7 @@ export class Distributior {
       this.logger.dispatchDebug(
         `👋 Output a contentscript to dist. ${chalk.gray(`${sourceFilePath}" -> "${outputPath}`)}`,
       );
-      await fsExtra.outputFile(outputPath, code);
+      await this.fs.outputFile(outputPath, code);
 
       this.manifestFactory.resolve(sourceFilePathInManifest, fileName);
     }
@@ -369,7 +370,7 @@ export class Distributior {
       this.logger.dispatchDebug(
         `👋 Output a service worker to dist. ${chalk.gray(`${sourcePath}" -> "${outputPath}`)}`,
       );
-      await fsExtra.outputFile(outputPath, code);
+      await this.fs.outputFile(outputPath, code);
 
       this.manifestFactory.resolve(sourceFilePathInManifest, fileName);
     }
@@ -410,7 +411,7 @@ export class Distributior {
       this.logger.dispatchDebug(
         `👋 Output a css to dist. ${chalk.gray(`${sourcePath}" -> "${outputPath}`)}`,
       );
-      await fsExtra.outputFile(outputPath, result);
+      await this.fs.outputFile(outputPath, result);
       this.manifestFactory.resolve(sourceFilePathInManifest, fileName);
     }
   }
@@ -446,7 +447,7 @@ export class Distributior {
     if (includeConnector) {
       const isoFileName = 'crxm-isolated-connector.js';
       const isoConnectorPath = absoluteGuard(resolve(chromeOutputPath, isoFileName));
-      await fsExtra.outputFile(
+      await this.fs.outputFile(
         isoConnectorPath,
         `${stringifyFunction(isolatedConnector, [this.buildId, JSON.stringify(this.configLoader.useConfig())])}\n`,
       );
@@ -513,13 +514,13 @@ export class Distributior {
         semi: true,
       });
 
-      await fsExtra.outputFile(output, formated);
+      await this.fs.outputFile(output, formated);
     }
 
     if (this.isWatch) {
       const code = this.createDev.outputDevelopmentUserjs();
       const output = resolve(dirname(distPath), 'dev.user.js');
-      await fsExtra.outputFile(output, code);
+      await this.fs.outputFile(output, code);
     }
 
     this.logger.dispatchDebug(`👋 Output a userjs to dist. ${chalk.gray(`"${output}"`)}`);
@@ -529,7 +530,7 @@ export class Distributior {
     const { public: publicDir } = this.configLoader.useConfig();
 
     if (publicDir !== undefined && publicDir !== false) {
-      await fsExtra.copy(publicDir, resolve(distPath, this.publicDirInDist), {
+      await this.fs.copy(publicDir, resolve(distPath, this.publicDirInDist), {
         overwrite: true,
       });
     }
@@ -546,7 +547,7 @@ export class Distributior {
           const output = absoluteGuard(
             resolve(distPath, `${this.publicDirInDist}/icons/`, fileName),
           );
-          await fsExtra.copy(path, output);
+          await this.fs.copy(path, output);
 
           const iconPath = (`${this.publicDirInDist}/icons/` + fileName) as FilePath<'relative'>;
           this.manifestFactory.resolve(raw, iconPath);

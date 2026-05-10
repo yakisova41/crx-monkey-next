@@ -7,9 +7,9 @@ import {
 } from './server/SockServer';
 import { FilePath, I_HMR } from './typeDefs';
 import { ConfigLoader } from './ConfigLoader';
-import fse from 'fs-extra';
 import { resolve } from 'path';
 import MurmurHash3 from 'murmurhash3js';
+import type { I_FileSystem } from './FileSystem';
 
 @injectable()
 export class HMR implements I_HMR {
@@ -19,6 +19,7 @@ export class HMR implements I_HMR {
   constructor(
     @inject(TYPES.SockServer) private sockServer: SockServer,
     @inject(TYPES.ConfigLoader) private configLoader: ConfigLoader,
+    @inject(TYPES.FileSystem) private readonly fs: I_FileSystem,
   ) {}
 
   public setup() {
@@ -73,7 +74,7 @@ export class HMR implements I_HMR {
     await (async () => {
       const varinjection = [`var __crxm_running_env = 'chrome-html_script_react';`, ''].join('\n');
       const code = varinjection + decodedResult;
-      await fse.outputFile(resolve(chrome, cacheFileName), code);
+      await this.fs.outputFile(resolve(chrome, cacheFileName), code);
     })();
 
     // for chrome to reload and for userjs

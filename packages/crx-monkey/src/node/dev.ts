@@ -14,9 +14,9 @@ import { Logger } from './Logger';
 import { SockServer, SockServerConsoleRecieved } from './server/SockServer';
 import { CreateDevClient } from './development/CreateDevClient';
 import { FileServer } from './server/FileServer';
-import { copyLocales } from './manifest/i18n';
 import chalk from 'chalk';
 import { I_HMR } from './typeDefs';
+import { I_I18n } from './manifest/I18n';
 
 /**
  * Start develop mode.
@@ -59,7 +59,9 @@ export async function dev() {
 
   await distributior.cleanupDist();
 
-  copyLocales();
+  const i18n = container.get<I_I18n>(TYPES.I18n);
+
+  i18n.copyLocales();
 
   // The websocket server for hotreload.
   sockServer.setup();

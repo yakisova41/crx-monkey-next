@@ -1,11 +1,11 @@
 import express from 'express';
 import { resolve, dirname, isAbsolute } from 'path';
-import fse from 'fs-extra';
 import * as http from 'http';
 import consola from 'consola';
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../types';
 import { ConfigLoader } from '../ConfigLoader';
+import type { I_FileSystem } from '../FileSystem';
 /*
 /**
  * The server of send to script code.
@@ -15,7 +15,10 @@ export class FileServer {
   private readonly app: express.Express;
   private server: null | http.Server = null;
 
-  constructor(@inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader) {
+  constructor(
+    @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
+    @inject(TYPES.FileSystem) private readonly fs: I_FileSystem,
+  ) {
     const {
       server: { host, port },
     } = this.configLoader.useConfig();
@@ -74,7 +77,7 @@ export class FileServer {
         filepath = resolve(dirname(manifest), userjs);
       }
 
-      if (fse.existsSync(filepath)) {
+      if (this.fs.existsSync(filepath)) {
         res.sendFile(filepath);
       } else {
         res.send(400);
@@ -87,7 +90,7 @@ export class FileServer {
       if (!isAbsolute(userjs)) {
         filepath = resolve(dirname(manifest), dirname(userjs), 'dev.user.js');
       }
-      if (fse.existsSync(filepath)) {
+      if (this.fs.existsSync(filepath)) {
         res.sendFile(filepath);
       } else {
         res.send(400);

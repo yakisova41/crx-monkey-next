@@ -1,9 +1,5 @@
 import path from 'path';
-import fse, { exists } from 'fs-extra';
-import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import mime from 'mime';
-import esbuild from 'esbuild';
 import { FilePath } from './typeDefs';
 
 export type FileURL = `file:///${string}`;
@@ -31,93 +27,6 @@ export function resolveFilePath(filePath: string, url: boolean = false) {
   } else {
     return path.resolve(filePath) as FilePath<'absolute'>;
   }
-}
-
-/**
- * Import a JS dynamically without any cache.
- * @param filePath
- * @returns A module.
- */
-export async function noCacheImport<T = unknown>(
-  filePath: FilePath,
-  base: FilePath = import.meta.dirname as FilePath<'absolute'>,
-) {
-  if (!(await exists(filePath))) {
-    throw new Error(`The module '${filePath}' does not exist`);
-  }
-  const data = fse.readFileSync(filePath, {});
-  const tmpFilePath = path.resolve(base, crypto.randomUUID()) as FilePath<'absolute'>;
-
-  await fse.outputFile(tmpFilePath, data.toString());
-
-  try {
-    const module = (await import(resolveFilePath(tmpFilePath, true))) as T;
-    fse.removeSync(tmpFilePath);
-    return module;
-  } catch (e) {
-    fse.removeSync(tmpFilePath);
-    throw e;
-  }
-}
-
-/**
- * Import a Typescript dynamically without any cache.
- * @param filePath
- * @returns A module.
- */
-export async function noCacheImportTs<T = unknown>(
-  filePath: FilePath,
-  base: FilePath = import.meta.dirname as FilePath<'absolute'>,
-) {
-  const buildResult = await esbuild
-    .build({
-      entryPoints: [filePath],
-      write: false,
-      platform: 'node',
-      bundle: true,
-      target: 'esnext',
-      format: 'esm',
-      external: [
-        'fs',
-        'path',
-        '../packages/crx-monkey/dist/node/exports.js',
-        'crx-monkey',
-        'crx-monkey-next',
-      ],
-    })
-    .then((result) => {
-      const outputFile = result.outputFiles[0];
-      return outputFile.contents;
-    });
-
-  const tmpFilePath = path.resolve(base, crypto.randomUUID()) as FilePath<'absolute'>;
-
-  await fse.outputFile(tmpFilePath, buildResult);
-
-  try {
-    const module = (await import(resolveFilePath(tmpFilePath, true))) as T;
-    fse.removeSync(tmpFilePath);
-    return module;
-  } catch (e) {
-    fse.removeSync(tmpFilePath);
-    throw e;
-  }
-}
-
-/**
- * Is typescript file
- * @param filepath
- * @returns
- */
-export function isTs(filepath: FilePath) {
-  const s = filepath.split('.');
-  return s[s.length - 1] === 'ts' ? true : false;
-}
-
-export function fileToDataUri(filePath: FilePath) {
-  const mimeType = mime.getType(filePath) || 'application/octet-stream';
-  const buffer = fse.readFileSync(filePath);
-  return `data:${mimeType};base64,${buffer.toString('base64')}`;
 }
 
 /**

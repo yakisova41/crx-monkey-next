@@ -6,6 +6,7 @@ import { defineConfig, sassBundler, sassBundlerWatch, tsBundler, tsBundlerWatch 
 import { mock, expect, it, describe, spyOn, afterEach, beforeEach } from 'bun:test';
 import { htmlBundler, htmlBundlerWatch } from '../plugins/htmlBundler';
 import { CrxmConfigRequired } from '../typeDefs';
+import { FileSystem } from '../FileSystem';
 
 const defaultConfig: CrxmConfigRequired = {
   output: {
@@ -46,6 +47,8 @@ const defaultConfig: CrxmConfigRequired = {
 
 const EXPORTS_PATH = resolve(import.meta.dir, '../exports');
 
+const fileSystem = new FileSystem();
+
 describe('A config can be imported.', () => {
   afterEach(() => {
     mock.restore();
@@ -70,7 +73,7 @@ describe('A config can be imported.', () => {
     export default defineConfig({});`,
     );
 
-    const loader = new ConfigLoader();
+    const loader = new ConfigLoader(fileSystem);
     await loader.loadConfig();
 
     const use = loader.useConfig();
@@ -86,7 +89,7 @@ describe('A config can be imported.', () => {
     export default defineConfig({});`,
     );
 
-    const loader = new ConfigLoader();
+    const loader = new ConfigLoader(fileSystem);
     await loader.loadConfig();
 
     const use = loader.useConfig();
@@ -108,7 +111,7 @@ describe('A config can be imported.', () => {
     });`,
     );
 
-    const loader = new ConfigLoader();
+    const loader = new ConfigLoader(fileSystem);
     await loader.loadConfig();
 
     writeFileSync(
@@ -145,7 +148,7 @@ describe('Errors when failing to load config', () => {
   it('should throw an error when nothing is exported', async () => {
     writeFileSync(join(testDir, 'crxm.config.js'), ``);
 
-    const loader = new ConfigLoader();
+    const loader = new ConfigLoader(fileSystem);
 
     await expect(loader.loadConfig()).rejects.toThrow('The config is not exported as default in');
   });
@@ -158,13 +161,13 @@ describe('Errors when failing to load config', () => {
     export const config =  defineConfig({});`,
     );
 
-    const loader = new ConfigLoader();
+    const loader = new ConfigLoader(fileSystem);
 
     await expect(loader.loadConfig()).rejects.toThrow('The config is not exported as default in');
   });
 
   it('should throw an error if the config file does not exist', async () => {
-    const loader = new ConfigLoader();
+    const loader = new ConfigLoader(fileSystem);
 
     await expect(loader.loadConfig()).rejects.toThrow(
       'The config file not found. Please create "crxm.config.js"',

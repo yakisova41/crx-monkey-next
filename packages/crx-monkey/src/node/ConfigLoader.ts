@@ -1,8 +1,9 @@
-import { absoluteGuard, isTs, noCacheImport, noCacheImportTs, resolveFilePath } from './file';
+import { absoluteGuard, resolveFilePath } from './file';
 import { CrxmConfigRequired, FilePath } from 'src/node/typeDefs';
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { dirname, resolve as pathResolve } from 'path';
-import { promises } from 'fs';
+import { TYPES } from './types';
+import type { I_FileSystem } from './FileSystem';
 
 export interface I_ConfigLoader {
   loadConfig(): Promise<void>;
@@ -15,6 +16,8 @@ export interface I_ConfigLoader {
  */
 @injectable()
 export class ConfigLoader implements I_ConfigLoader {
+  constructor(@inject(TYPES.FileSystem) private readonly fs: I_FileSystem) {}
+
   public static configFileNamePatterns = ['crxm.config.js', 'crxm.config.ts'];
   private loadedConfig: CrxmConfigRequired | null = null;
   private configPath: FilePath<'absolute'> | null = null;
@@ -86,7 +89,7 @@ export class ConfigLoader implements I_ConfigLoader {
    */
   private async configSearchInDir(dir: string): Promise<string | null> {
     return await new Promise((resolve) => {
-      void promises.readdir(dir + '/').then((files) => {
+      void this.fs.promises.readdir(dir + '/').then((files) => {
         files.forEach((fileName) => {
           ConfigLoader.configFileNamePatterns.forEach((fileNamePattern) => {
             if (fileName === fileNamePattern) {
@@ -108,19 +111,10 @@ export class ConfigLoader implements I_ConfigLoader {
     const configAbsolutePath = resolveFilePath(confPath);
     const configDir = absoluteGuard(dirname(configAbsolutePath));
 
-    let buildConfig;
-
-    if (isTs(configAbsolutePath)) {
-      buildConfig = await noCacheImportTs<{ default: CrxmConfigRequired }>(
-        configAbsolutePath,
-        configDir,
-      );
-    } else {
-      buildConfig = await noCacheImport<{ default: CrxmConfigRequired }>(
-        configAbsolutePath,
-        configDir,
-      );
-    }
+    const buildConfig = await this.fs.noCacheImport<{ default: CrxmConfigRequired }>(
+      configAbsolutePath,
+      configDir,
+    );
 
     if (buildConfig.default === undefined) {
       throw new Error(`The config is not exported as default in "${configAbsolutePath}".`);

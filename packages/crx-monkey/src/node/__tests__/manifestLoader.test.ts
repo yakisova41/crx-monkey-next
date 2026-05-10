@@ -5,6 +5,7 @@ import { ConfigLoader } from '../ConfigLoader';
 import { mock, expect, it, describe, spyOn, afterEach, beforeEach } from 'bun:test';
 import { CrxmManifestImportantKeyRequired } from '../typeDefs';
 import { ManifestLoader } from '../manifest/ManifestLoader';
+import { FileSystem } from '../FileSystem';
 
 const defaultManifest: CrxmManifestImportantKeyRequired = {
   description: '',
@@ -17,6 +18,8 @@ const defaultManifest: CrxmManifestImportantKeyRequired = {
   icons: undefined,
 };
 const EXPORTS_PATH = resolve(import.meta.dir, '../exports');
+
+const fileSystem = new FileSystem();
 
 describe('A manifest can be imported.', () => {
   afterEach(() => {
@@ -47,10 +50,10 @@ describe('A manifest can be imported.', () => {
       export default defineManifest({});`,
     );
 
-    const configLoader = new ConfigLoader();
+    const configLoader = new ConfigLoader(fileSystem);
     await configLoader.loadConfig();
 
-    const manifestLoader = new ManifestLoader(configLoader);
+    const manifestLoader = new ManifestLoader(configLoader, fileSystem);
     await manifestLoader.loadManifest();
 
     const use = manifestLoader.useManifest();
@@ -75,10 +78,10 @@ describe('A manifest can be imported.', () => {
       export default defineManifest({});`,
     );
 
-    const configLoader = new ConfigLoader();
+    const configLoader = new ConfigLoader(fileSystem);
     await configLoader.loadConfig();
 
-    const manifestLoader = new ManifestLoader(configLoader);
+    const manifestLoader = new ManifestLoader(configLoader, fileSystem);
     await manifestLoader.loadManifest();
 
     const use = manifestLoader.useManifest();
@@ -108,10 +111,10 @@ describe('Errors when failing to load manifest', () => {
       `import { defineConfig } from '${EXPORTS_PATH}'; export default defineConfig({});`,
     );
 
-    const configLoader = new ConfigLoader();
+    const configLoader = new ConfigLoader(fileSystem);
     await configLoader.loadConfig();
 
-    const manifestLoader = new ManifestLoader(configLoader);
+    const manifestLoader = new ManifestLoader(configLoader, fileSystem);
 
     await expect(manifestLoader.loadManifest()).rejects.toThrow('The manifest does not exist ');
   });
@@ -125,10 +128,10 @@ describe('Errors when failing to load manifest', () => {
     // default exportがないマニフェストファイル
     writeFileSync(join(testDir, 'manifest.js'), `export const manifest = {};`);
 
-    const configLoader = new ConfigLoader();
+    const configLoader = new ConfigLoader(fileSystem);
     await configLoader.loadConfig();
 
-    const manifestLoader = new ManifestLoader(configLoader);
+    const manifestLoader = new ManifestLoader(configLoader, fileSystem);
     await expect(manifestLoader.loadManifest()).rejects.toThrow(
       'The manifest is not exported as default in',
     );
@@ -168,10 +171,10 @@ describe('Manifest and Config integration', () => {
          export default defineManifest({ name: 'custom-name' });`,
     );
 
-    const configLoader = new ConfigLoader();
+    const configLoader = new ConfigLoader(fileSystem);
     await configLoader.loadConfig();
 
-    const manifestLoader = new ManifestLoader(configLoader);
+    const manifestLoader = new ManifestLoader(configLoader, fileSystem);
     await manifestLoader.loadManifest();
 
     expect(manifestLoader.useManifest().name).toBe('custom-name');

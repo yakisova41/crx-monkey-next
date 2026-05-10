@@ -1,8 +1,8 @@
 import { inject, injectable } from 'inversify';
-import { getMessage } from './i18n';
 import type { CrxmManifest, CrxmManifestImportantKeys, FilePath } from 'src/node/typeDefs';
 import { TYPES } from '../types';
 import { ManifestLoader } from './ManifestLoader';
+import type { I_I18n } from './I18n';
 
 /**
  * Create post-build manifest from original manifest
@@ -17,7 +17,10 @@ export class ManifestFactory {
     'trusted_inject',
   ];
 
-  constructor(@inject(TYPES.ManifestLoader) private readonly manifestLoader: ManifestLoader) {
+  constructor(
+    @inject(TYPES.ManifestLoader) private readonly manifestLoader: ManifestLoader,
+    @inject(TYPES.I18n) private readonly i18n: I_I18n,
+  ) {
     this.rawManifest = this.manifestLoader.useManifest();
     this.workspace = structuredClone(this.rawManifest);
   }
@@ -36,7 +39,7 @@ export class ManifestFactory {
   public enableDevMode() {
     const i18nNameMatch = this.workspace.name.match(/__MSG_(.*)__/);
     if (i18nNameMatch !== null) {
-      getMessage('en', i18nNameMatch[1]).then((msg) => {
+      this.i18n.getMessage('en', i18nNameMatch[1]).then((msg) => {
         if (msg !== null) {
           this.workspace.name = '[Dev] ' + msg;
         }

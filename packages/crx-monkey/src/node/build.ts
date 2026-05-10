@@ -4,7 +4,7 @@ import { CrxmBundler } from './CrxmBundler';
 import { Distributior } from './Distributior';
 import { container } from './inversify.config';
 import { Logger } from './Logger';
-import { copyLocales } from './manifest/i18n';
+import { I_I18n } from './manifest/I18n';
 import { ManifestLoader } from './manifest/ManifestLoader';
 import { TYPES } from './types';
 import { UserscriptBundler } from './userscript/UserscriptBundler';
@@ -43,7 +43,9 @@ export async function build() {
 
     await distributior.cleanupDist();
 
-    copyLocales();
+    const i18n = container.get<I_I18n>(TYPES.I18n);
+
+    i18n.copyLocales();
 
     // Register all build targets for bundler from manifest.
     await registerer.registerAll();
