@@ -1,5 +1,5 @@
 import { inject, injectable } from 'inversify';
-import type { CrxmBundlerPlugin, CrxmBundlerPluginWatch } from '../typeDefs';
+import type { BuildTarget, CrxmBundlerPlugin, CrxmBundlerPluginWatch } from '../typeDefs';
 import { TYPES } from '../types';
 import { parse, HTMLElement, Node, NodeType } from 'node-html-parser';
 import { ConfigLoader } from '../ConfigLoader';
@@ -8,13 +8,13 @@ import { CrxmBundler } from '../CrxmBundler';
 import MurmurHash3 from 'murmurhash3js';
 import { ManifestFactory } from '../manifest/ManifestFactory';
 import { htmlBundler, htmlBundlerWatch } from '../plugins/htmlBundler';
-import { Logger } from '../Logger';
+import type { I_Logger } from '../Logger';
 import chalk from 'chalk';
 import type { I_FileSystem } from '../FileSystem';
 import { absoluteGuard } from '../file';
 
 @injectable()
-export class Popup {
+export class Popup implements I_Popup {
   private assets: PopupBuilderAssets | undefined;
   private plugins: {
     build: Record<string, CrxmBundlerPlugin>;
@@ -37,7 +37,7 @@ export class Popup {
     @inject(TYPES.CrxmBundler) private readonly bundler: CrxmBundler,
     @inject(TYPES.ManifestFactory) private readonly manifestFactory: ManifestFactory,
     @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
-    @inject(TYPES.Logger) private readonly logger: Logger,
+    @inject(TYPES.Logger) private readonly logger: I_Logger,
     @inject(TYPES.FileSystem) private readonly fs: I_FileSystem,
   ) {
     const {
@@ -46,12 +46,8 @@ export class Popup {
       output: { chrome },
     } = this.configLoader.useConfig();
 
-    if (chrome === undefined) {
-      throw new Error('The Chrome dist is undefined.');
-    }
-
     this.plugins = { build, watch };
-    this.outputDir = chrome;
+    this.outputDir = resolve(dirname(this.configLoader.useConfigPath()), chrome ?? '.');
   }
 
   /**
@@ -64,7 +60,14 @@ export class Popup {
     const diff = this.getDiffFromAssets(assets, this.assets);
     this.diff = diff;
     this.assets = assets;
-    this.syncResults = await this.syncBundler(htmlEntry, diff);
+    const added = await this.syncBundler(htmlEntry, diff);
+    this.syncResults = [
+      ...this.syncResults.filter(
+        ({ entry }) =>
+          !diff.scripts.delete.includes(entry) && !diff.hrefFiles.delete.includes(entry),
+      ),
+      ...added,
+    ];
 
     this.parser.extension = await this.getParser(htmlEntry);
     this.parser.userjs = await this.getParser(htmlEntry);
@@ -554,3 +557,18 @@ interface SyncResult {
 }
 
 type Diff = Record<'scripts' | 'hrefFiles' | 'srcFiles', { add: string[]; delete: string[] }>;
+
+export interface I_Popup {
+  register(htmlEntry: string): Promise<void>;
+  remove(htmlEntry: string): Promise<void>;
+  refreshExtensionParser(): Promise<void>;
+  getHTML(): Promise<{
+    contents: string;
+    outputPath: string;
+    resolveManifest: () => void;
+  }>;
+  getHtmlInlined(): Promise<string>;
+  getExtensionResources(): Promise<
+    { target: BuildTarget; resolveTarget: (newfileName: string) => void }[]
+  >;
+}

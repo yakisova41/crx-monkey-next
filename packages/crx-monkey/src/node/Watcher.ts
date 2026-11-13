@@ -4,7 +4,7 @@ import { ConfigLoader } from './ConfigLoader';
 import { ManifestLoader } from './manifest/ManifestLoader';
 import { dirname, resolve } from 'path';
 import chalk from 'chalk';
-import { Logger } from './Logger';
+import type { I_Logger } from './Logger';
 import { FilePath } from './typeDefs';
 import { absoluteGuard } from './file';
 import type { I_FileSystem } from './FileSystem';
@@ -30,7 +30,7 @@ export class Watcher implements I_Watcher {
   constructor(
     @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
     @inject(TYPES.ManifestLoader) private readonly manifestLoader: ManifestLoader,
-    @inject(TYPES.Logger) private readonly logger: Logger,
+    @inject(TYPES.Logger) private readonly logger: I_Logger,
     @inject(TYPES.FileSystem) private readonly fs: I_FileSystem,
   ) {
     this.configPath = this.configLoader.useConfigPath();

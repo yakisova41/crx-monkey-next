@@ -6,12 +6,14 @@ import { TYPES } from '../types';
 import { ConfigLoader } from '../ConfigLoader';
 import { Codeblock, I_Codeblock } from './CodeBlock';
 import { FilePath } from '../typeDefs';
+import { Define } from '../BundlerRegisterer';
+import { createDefinedCode, crxmVarinjection } from '../OutputBundled/utils';
 
 /**
  * Properly bundle each build result as a single user script
  */
 @injectable()
-export class UserscriptBundler {
+export class UserscriptBundler implements I_UserscriptBundler {
   private codeWorkspace: string = '';
   private codeBlocks: Record<FilePath<'absolute'>, I_Codeblock> = {};
   private popupFunctionName!: string;
@@ -35,8 +37,12 @@ export class UserscriptBundler {
    * @param jsFilePath
    * @param codeBinaly
    */
-  public addBuildResult(jsFilePath: FilePath<'absolute'>, codeBinaly: Uint8Array) {
-    const codeBlock = new UserJsCodeBlock(jsFilePath, codeBinaly, this.buildID);
+  public addBuildResult(
+    jsFilePath: FilePath<'absolute'>,
+    codeBinaly: Uint8Array,
+    define: Define[],
+  ) {
+    const codeBlock = new UserJsCodeBlock(jsFilePath, codeBinaly, this.buildID, define);
     this.codeBlocks[jsFilePath] = codeBlock;
   }
 
@@ -137,6 +143,14 @@ export class UserscriptBundler {
   }
 }
 
+export interface I_UserscriptBundler {
+  initialize(): void;
+  addBuildResult(jsFilePath: FilePath<'absolute'>, codeBinaly: Uint8Array, define: Define[]): void;
+  addStyle(cssFilePath: FilePath<'absolute'>, code: Uint8Array, trusted: boolean): void;
+  addPopup(filePath: FilePath<'absolute'>, html: string): void;
+  createCode(): string;
+}
+
 class UserJsCodeBlock extends Codeblock implements I_Codeblock {
   public getFunctionalized() {
     let result = '';
@@ -144,12 +158,10 @@ class UserJsCodeBlock extends Codeblock implements I_Codeblock {
     const text = new TextDecoder().decode(this.content);
 
     // Inject crxm vars
-    const varinjection = [
-      `var __crxm_build_id = "${this.buildId}"`,
-      `var __crxm_running_env = 'userjs-userjs_script'`,
-    ].join('\n');
+    const crxmVarInjected = crxmVarinjection(text, this.buildId, 'userjs-userjs_script');
+    const definesInjected = createDefinedCode(crxmVarInjected, this.define);
 
-    result += `\n// ${this.filePath}\n function ${this.funcName}() {\n${varinjection}\n${text}}\n`;
+    result += `\n// ${this.filePath}\n function ${this.funcName}() {\n${definesInjected}\n${text}}\n`;
 
     return result;
   }

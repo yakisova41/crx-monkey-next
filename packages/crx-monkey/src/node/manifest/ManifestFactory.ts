@@ -8,7 +8,7 @@ import type { I_I18n } from './I18n';
  * Create post-build manifest from original manifest
  */
 @injectable()
-export class ManifestFactory {
+export class ManifestFactory implements I_ManifestFactory {
   public rawManifest: CrxmManifestImportantKeys;
   private workspace: CrxmManifest;
   private definedCustomKeysByCrxMonkeyInContentScrpt: string[] = [
@@ -178,4 +178,21 @@ export class ManifestFactory {
       this.workspace.content_security_policy.extension_pages = value;
     }
   }
+}
+
+export interface I_ManifestFactory {
+  rawManifest: CrxmManifestImportantKeys;
+  initialize(): void;
+  enableDevMode(): void;
+  getWorkspace(): CrxmManifest;
+  getResult(): CrxmManifest;
+  resolve(sourcePath: FilePath<'relative' | 'absolute'>, targetPath: FilePath<'relative'>): void;
+  addContentScript(
+    js: string[],
+    css: string[],
+    matches: string[],
+    world?: 'MAIN' | 'ISOLATED',
+    run_at?: 'document_start' | 'document_end' | 'document_idle',
+  ): void;
+  setCsp(value: string): void;
 }

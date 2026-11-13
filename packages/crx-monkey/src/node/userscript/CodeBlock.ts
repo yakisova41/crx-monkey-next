@@ -1,9 +1,11 @@
+import { Define } from '../BundlerRegisterer';
 import { FilePath } from '../typeDefs';
 
 export class Codeblock {
   private _filePath: FilePath<'absolute'>;
   private _content: Uint8Array;
   private _funcName: string;
+  private _define: Define[] = [];
   protected buildId: string;
 
   public get filePath() {
@@ -18,11 +20,22 @@ export class Codeblock {
     return this._funcName;
   }
 
-  constructor(filePath: FilePath<'absolute'>, content: Uint8Array, buildId: string) {
+  public get define() {
+    return this._define;
+  }
+
+  constructor(
+    filePath: FilePath<'absolute'>,
+
+    content: Uint8Array,
+    buildId: string,
+    define?: Define[],
+  ) {
     this._filePath = filePath;
     this._content = content;
     this._funcName = convertFilePathToFuncName(this._filePath);
     this.buildId = buildId;
+    this._define = define === undefined ? [] : define;
   }
 }
 

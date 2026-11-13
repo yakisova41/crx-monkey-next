@@ -1,24 +1,21 @@
 import chalk from 'chalk';
-import { inject, injectable } from 'inversify';
+import { injectable } from 'inversify';
 import moment from 'moment';
-import { TYPES } from './types';
-import { ConfigLoader } from './ConfigLoader';
 import packageJ from '../../package.json';
 import { dirname, resolve } from 'path';
 import { absoluteGuard } from './file';
+import { CrxmConfigRequired } from './typeDefs';
 
 @injectable()
-export class Logger {
+export class Logger implements I_Logger {
   public logLevel: 'info' | 'error' | 'debug' = 'info';
 
-  constructor(@inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader) {}
-
-  public showInfo() {
+  public showInfo(config: CrxmConfigRequired) {
     const {
       server: { host, port, websocket },
       output: { chrome },
       manifest,
-    } = this.configLoader.useConfig();
+    } = config;
 
     if (chrome === undefined) {
       throw new Error('');
@@ -100,4 +97,15 @@ export class Logger {
       return 'Could not get stack trace.';
     }
   }
+}
+
+export interface I_Logger {
+  logLevel: 'info' | 'error' | 'debug';
+  showInfo(config: CrxmConfigRequired): void;
+  initialize(): void;
+  dispatchLog(...detail: unknown[]): string;
+  dispatchErr(...detail: unknown[]): string;
+  dispatchDebug(...detail: unknown[]): string;
+  dispatchDebugStack(...detail: unknown[]): void;
+  dispatchConsole(...detail: unknown[]): void;
 }
