@@ -9,19 +9,25 @@ import { FilePath } from '../typeDefs';
  * @param env
  * @returns
  */
-export function crxmVarinjection(rawCode: string | Uint8Array, buildId: string, env: string) {
-  const varinjection = [
-    `var __crxm_build_id = "${buildId}"`,
-    `var __crxm_running_env = '${env}'`,
+export function crxmVarinjection(
+  rawCode: string | Uint8Array,
+  buildId: string,
+  env: string,
+  scope: 'iife' | 'wrapper' = 'iife',
+) {
+  const code = typeof rawCode === 'string' ? rawCode : new TextDecoder().decode(rawCode);
+  const declarations = [
+    'var __crxm_build_id = ' + JSON.stringify(buildId) + ';',
+    'var __crxm_running_env = ' + JSON.stringify(env) + ';',
+    '',
   ].join('\n');
-  const iifeRegex = /(\((?:async\s+)?(?:function.*?|.*?=>)\s*\{)/;
 
-  if (typeof rawCode !== 'string') {
-    const decoder = new TextDecoder();
-    const decorded = decoder.decode(rawCode);
-    return decorded.replace(iifeRegex, `$1\n${varinjection}`);
+  if (scope === 'wrapper') {
+    return declarations + code;
   }
-  return rawCode.replace(iifeRegex, `$1\n${varinjection}`);
+
+  const iifeRegex = /(\((?:async\s+)?(?:function.*?|.*?=>)\s*\{)/;
+  return code.replace(iifeRegex, (opening) => opening + '\n' + declarations);
 }
 
 export function createDefinedCode(rawCode: string | Uint8Array, defines: Define[]) {

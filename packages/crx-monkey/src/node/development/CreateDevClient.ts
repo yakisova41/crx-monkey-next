@@ -5,7 +5,7 @@ import { developSw } from './codes/sw';
 import { CrxmBundler } from '../CrxmBundler';
 import { UserscriptHeaderFactory } from '../userscript/UserscriptHeader';
 import { userjs } from './codes/userjs';
-import { resolve } from 'path';
+import { dirname, resolve } from 'path';
 import { developmentContentScript } from './codes/extension';
 import fsExtra from 'fs-extra/esm';
 import { ManifestFactory } from '../manifest/ManifestFactory';
@@ -78,7 +78,7 @@ export class CreateDevClient {
     return code;
   }
 
-  public outputDevExtension() {
+  public outputDevExtension(destination?: string) {
     const {
       output: { chrome },
       server: { host, websocket },
@@ -92,7 +92,8 @@ export class CreateDevClient {
      * Development contentscript in isolated env
      */
     const devScriptIsolatedFileName = 'crxm-development.js';
-    const devScriptIsolatedPath = resolve(chrome, devScriptIsolatedFileName);
+    const outputDir = destination ?? resolve(dirname(this.configLoader.useConfigPath()), chrome);
+    const devScriptIsolatedPath = resolve(outputDir, devScriptIsolatedFileName);
 
     const devScriptIsolatedCode = stringifyFunction(developmentContentScript, [
       this.buildId,
@@ -102,11 +103,14 @@ export class CreateDevClient {
 
     fsExtra.outputFileSync(devScriptIsolatedPath, devScriptIsolatedCode);
 
-    this.manifestFactory.addContentScript(
-      [devScriptIsolatedFileName],
-      [],
-      ['<all_urls>'],
-      'ISOLATED',
-    );
+    const scripts = this.manifestFactory.getWorkspace().content_scripts ?? [];
+    if (!scripts.some(({ js }) => js?.includes(devScriptIsolatedFileName))) {
+      this.manifestFactory.addContentScript(
+        [devScriptIsolatedFileName],
+        [],
+        ['<all_urls>'],
+        'ISOLATED',
+      );
+    }
   }
 }

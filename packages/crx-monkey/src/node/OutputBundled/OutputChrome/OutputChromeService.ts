@@ -12,6 +12,7 @@ import type { I_ManifestParser } from '../../manifest/ManifestParser';
 import type { I_ManifestFactory } from '../../manifest/ManifestFactory';
 import type { I_Logger } from '../../Logger';
 import chalk from 'chalk';
+import { CreateDevClient } from '../../development/CreateDevClient';
 import { isolatedConnector } from '../../isolatedConnector';
 import { stringifyFunction } from '../../utils';
 
@@ -27,6 +28,8 @@ export class OutputChromeService implements I_OutputChromeService {
     @inject(TYPES.ManifestFactory) private readonly manifestFactory: I_ManifestFactory,
     @inject(TYPES.Logger) private readonly logger: I_Logger,
     @inject(TYPES.Popup) private readonly popup: I_Popup,
+    @inject(TYPES.CreateDevClient) private readonly createDevClient: CreateDevClient,
+    @inject(TYPES.IsWatch) private readonly isWatch: boolean,
   ) {}
 
   public async outputAll(
@@ -43,6 +46,9 @@ export class OutputChromeService implements I_OutputChromeService {
     await this.copyPublicDir(dist, configDir, config.public);
     await this.outputIcons(dist);
     await this.outputIsolatedConnector(dist, config);
+    if (this.isWatch) {
+      this.createDevClient.outputDevExtension(dist);
+    }
     await this.outputManifest(dist);
   }
 
@@ -244,7 +250,11 @@ export class OutputChromeService implements I_OutputChromeService {
       }
 
       const crxmVarInjected = crxmVarinjection(result, this.buildId, env);
-      const definesInjected = createDefinedCode(crxmVarInjected, define);
+      const code =
+        this.isWatch && env === 'chrome-sw'
+          ? this.createDevClient.outputDevelomentSw(crxmVarInjected)
+          : crxmVarInjected;
+      const definesInjected = createDefinedCode(code, define);
       await this.fileSystem.outputFile(outputPath, definesInjected);
       return {
         outputPath,

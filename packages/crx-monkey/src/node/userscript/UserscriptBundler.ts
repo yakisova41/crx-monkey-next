@@ -158,10 +158,10 @@ class UserJsCodeBlock extends Codeblock implements I_Codeblock {
     const text = new TextDecoder().decode(this.content);
 
     // Inject crxm vars
-    const crxmVarInjected = crxmVarinjection(text, this.buildId, 'userjs-userjs_script');
+    const crxmVarInjected = crxmVarinjection(text, this.buildId, 'userjs-userjs_script', 'wrapper');
     const definesInjected = createDefinedCode(crxmVarInjected, this.define);
 
-    result += `\n// ${this.filePath}\n function ${this.funcName}() {\n${definesInjected}\n${text}}\n`;
+    result += `\n// ${this.filePath}\n function ${this.funcName}() {\n${definesInjected}}\n`;
 
     return result;
   }

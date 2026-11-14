@@ -11,7 +11,6 @@ import { UserscriptHeaderFactory } from './userscript/UserscriptHeader';
 import type { I_UserscriptBundler } from './userscript/UserscriptBundler';
 import type { I_Logger } from './Logger';
 import { SockServer, SockServerConsoleRecieved } from './server/SockServer';
-import { CreateDevClient } from './development/CreateDevClient';
 import { FileServer } from './server/FileServer';
 import chalk from 'chalk';
 import { I_HMR } from './typeDefs';
@@ -56,7 +55,6 @@ export async function dev() {
   const userscriptBundler = container.get<I_UserscriptBundler>(TYPES.UserscriptBundler);
   const sockServer = container.get<SockServer>(TYPES.SockServer);
   const hmr = container.get<I_HMR>(TYPES.Hmr);
-  const createDevClient = container.get<CreateDevClient>(TYPES.CreateDevClient);
   const fileServer = container.get<FileServer>(TYPES.FileServer);
 
   await outputter.cleanupDist();
@@ -77,8 +75,6 @@ export async function dev() {
   userscriptBundler.initialize();
   await userscriptRegisterer.sync();
 
-  createDevClient.outputDevExtension();
-
   // Bundle
   await bundler.watch();
   // Output bundled file to dist
@@ -98,8 +94,6 @@ export async function dev() {
     userscriptBundler.initialize();
     userscriptHeaderFactory.initialize();
     await userscriptRegisterer.sync();
-
-    createDevClient.outputDevExtension();
 
     // Bundle
     await bundler.stopWatch();

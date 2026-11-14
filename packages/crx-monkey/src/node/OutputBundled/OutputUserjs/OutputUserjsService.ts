@@ -9,6 +9,8 @@ import type { I_Logger } from '../../Logger';
 import chalk from 'chalk';
 import type { I_UserscriptBundler } from '../../userscript/UserscriptBundler';
 import prettier from 'prettier';
+import { dirname, resolve } from 'path';
+import { CreateDevClient } from '../../development/CreateDevClient';
 
 @injectable()
 export class OutputUserjsService implements I_OutputUserjsService {
@@ -19,6 +21,8 @@ export class OutputUserjsService implements I_OutputUserjsService {
     @inject(TYPES.Logger) private readonly logger: I_Logger,
     @inject(TYPES.Popup) private readonly popup: I_Popup,
     @inject(TYPES.UserscriptBundler) private readonly userscriptBundler: I_UserscriptBundler,
+    @inject(TYPES.CreateDevClient) private readonly createDevClient: CreateDevClient,
+    @inject(TYPES.IsWatch) private readonly isWatch: boolean,
   ) {}
 
   public async outputUserjsBundled(
@@ -82,6 +86,13 @@ export class OutputUserjsService implements I_OutputUserjsService {
       });
 
       await this.fileSystem.outputFile(destinationFilePath, formated);
+    }
+
+    if (this.isWatch) {
+      await this.fileSystem.outputFile(
+        resolve(dirname(destinationFilePath), 'dev.user.js'),
+        this.createDevClient.outputDevelopmentUserjs(),
+      );
     }
 
     this.logger.dispatchDebug(
