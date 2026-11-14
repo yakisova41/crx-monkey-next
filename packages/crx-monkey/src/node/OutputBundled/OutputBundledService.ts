@@ -17,7 +17,7 @@ import type { I_ManifestParser } from '../manifest/ManifestParser';
  * Old name:`Distributior`
  */
 @injectable()
-export class OutputBundledService {
+export class OutputBundledService implements I_OutputBundledService {
   constructor(
     @inject(TYPES.ConfigLoader) private readonly configLoader: I_ConfigLoader,
     @inject(TYPES.OutputChromeService) public readonly outputChromeService: I_OutputChromeService,
@@ -167,6 +167,8 @@ export class OutputBundledService {
 }
 
 export interface I_OutputBundledService {
+  readonly outputChromeService: I_OutputChromeService;
+  readonly outputUserjsService: I_OutputUserjsService;
   outputContentScript(entryPoint: FilePath<'absolute'>): Promise<void>;
   outputCss(entryPoint: FilePath<'absolute'>): Promise<void>;
   outputServiceWorker(entryPoint: FilePath<'absolute'>): Promise<void>;
