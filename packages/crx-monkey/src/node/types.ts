@@ -24,4 +24,8 @@ export const TYPES = {
   Hmr: Symbol.for('Hmr'),
   FileSystem: Symbol.for('I_FileSystem'),
   I18n: Symbol.for('I_I18n'),
+
+  OutputBundledService: Symbol.for('I_OutputBundledService'),
+  OutputChromeService: Symbol.for('I_OutputChromeService'),
+  OutputUserjsService: Symbol.for('I_OutputUserjsService'),
 };

@@ -1,13 +1,13 @@
 import { BundlerRegisterer } from './BundlerRegisterer';
 import { ConfigLoader } from './ConfigLoader';
 import { CrxmBundler } from './CrxmBundler';
-import { Distributior } from './Distributior';
+import type { I_OutputBundledService } from './OutputBundled/OutputBundledService';
 import { container } from './inversify.config';
-import { Logger } from './Logger';
+import type { I_Logger } from './Logger';
 import { I_I18n } from './manifest/I18n';
 import { ManifestLoader } from './manifest/ManifestLoader';
 import { TYPES } from './types';
-import { UserscriptBundler } from './userscript/UserscriptBundler';
+import type { I_UserscriptBundler } from './userscript/UserscriptBundler';
 import { UserscriptRegisterer } from './userscript/UserscriptRegisterer';
 import { errorHandler } from './utils';
 
@@ -19,7 +19,7 @@ export async function build() {
     container.bind(TYPES.IsWatch).toConstantValue(false);
     container.bind<string>(TYPES.BuildID).toConstantValue(crypto.randomUUID());
 
-    const logger = container.get<Logger>(TYPES.Logger);
+    const logger = container.get<I_Logger>(TYPES.Logger);
     logger.initialize();
 
     const configLoader = container.get<ConfigLoader>(TYPES.ConfigLoader);
@@ -35,20 +35,20 @@ export async function build() {
     await manifestLoader.loadManifest();
 
     const bundler = container.get<CrxmBundler>(TYPES.CrxmBundler);
-    const distributior = container.get<Distributior>(TYPES.Distributior);
+    const output = container.get<I_OutputBundledService>(TYPES.OutputBundledService);
     const registerer = container.get<BundlerRegisterer>(TYPES.BundlerRegisterer);
     const userscriptRegisterer = container.get<UserscriptRegisterer>(TYPES.UserscriptRegisterer);
 
-    const userscriptBundler = container.get<UserscriptBundler>(TYPES.UserscriptBundler);
+    const userscriptBundler = container.get<I_UserscriptBundler>(TYPES.UserscriptBundler);
 
-    await distributior.cleanupDist();
+    await output.cleanupDist();
 
     const i18n = container.get<I_I18n>(TYPES.I18n);
 
-    i18n.copyLocales();
+    await i18n.copyLocales();
 
     // Register all build targets for bundler from manifest.
-    await registerer.registerAll();
+    output.setDefines(await registerer.registerAll());
 
     userscriptBundler.initialize();
     await userscriptRegisterer.sync();
@@ -56,7 +56,7 @@ export async function build() {
     // Bundle
     await bundler.build();
     // Output bundled file to dist
-    await distributior.distAll();
+    await output.outputAll();
 
     logger.dispatchLog(`Build successful!`);
   } catch (e) {

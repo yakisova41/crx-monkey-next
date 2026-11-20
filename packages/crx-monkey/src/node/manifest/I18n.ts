@@ -96,7 +96,7 @@ export class I18n implements I18n {
     const config = this.configLoader.useConfig();
 
     if ((await this.fs.exists(localesPath)) && config.output.chrome !== undefined) {
-      await this.fs.copy(localesPath, path.join(config.output.chrome, '_locales'));
+      await this.fs.copy(localesPath, path.resolve(path.dirname(this.configLoader.useConfigPath()), config.output.chrome, '_locales'));
     }
   }
 }

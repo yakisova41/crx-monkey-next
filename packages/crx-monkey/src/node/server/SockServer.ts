@@ -2,7 +2,7 @@ import { inject, injectable } from 'inversify';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { TYPES } from '../types';
 import { ConfigLoader } from '../ConfigLoader';
-import { Logger } from '../Logger';
+import type { I_Logger } from '../Logger';
 import chalk from 'chalk';
 import { FilePath } from '../typeDefs';
 
@@ -33,7 +33,7 @@ export class SockServer {
    */
   constructor(
     @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
-    @inject(TYPES.Logger) private readonly logger: Logger,
+    @inject(TYPES.Logger) private readonly logger: I_Logger,
   ) {
     const {
       server: { host, websocket },

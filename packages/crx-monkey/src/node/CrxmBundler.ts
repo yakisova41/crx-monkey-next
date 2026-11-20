@@ -13,7 +13,7 @@ import {
   ScriptUpdateHandler,
 } from 'src/node/typeDefs';
 import chalk from 'chalk';
-import { Logger } from './Logger';
+import type { I_Logger } from './Logger';
 import { HMR } from './Hmr';
 import type { I_FileSystem } from './FileSystem';
 
@@ -29,7 +29,7 @@ export class CrxmBundler implements I_CrxmBundler {
 
   constructor(
     @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
-    @inject(TYPES.Logger) private readonly logger: Logger,
+    @inject(TYPES.Logger) private readonly logger: I_Logger,
     @inject(TYPES.Hmr) private readonly _hmr: HMR,
     @inject(TYPES.FileSystem) private readonly fs: I_FileSystem,
   ) {}

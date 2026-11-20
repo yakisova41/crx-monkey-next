@@ -5,18 +5,17 @@ import { container } from './inversify.config';
 import { ManifestLoader } from './manifest/ManifestLoader';
 import { TYPES } from './types';
 import { Watcher } from './Watcher';
-import { Distributior } from './Distributior';
 import { ManifestFactory } from './manifest/ManifestFactory';
 import { UserscriptRegisterer } from './userscript/UserscriptRegisterer';
 import { UserscriptHeaderFactory } from './userscript/UserscriptHeader';
-import { UserscriptBundler } from './userscript/UserscriptBundler';
-import { Logger } from './Logger';
+import type { I_UserscriptBundler } from './userscript/UserscriptBundler';
+import type { I_Logger } from './Logger';
 import { SockServer, SockServerConsoleRecieved } from './server/SockServer';
-import { CreateDevClient } from './development/CreateDevClient';
 import { FileServer } from './server/FileServer';
 import chalk from 'chalk';
 import { I_HMR } from './typeDefs';
 import { I_I18n } from './manifest/I18n';
+import { I_OutputBundledService } from './OutputBundled/OutputBundledService';
 
 /**
  * Start develop mode.
@@ -26,7 +25,7 @@ export async function dev() {
 
   container.bind<string>(TYPES.BuildID).toConstantValue(crypto.randomUUID());
 
-  const logger = container.get<Logger>(TYPES.Logger);
+  const logger = container.get<I_Logger>(TYPES.Logger);
   //logger.initialize();
 
   const configLoader = container.get<ConfigLoader>(TYPES.ConfigLoader);
@@ -34,9 +33,9 @@ export async function dev() {
   // Load the config from project.
   await configLoader.loadConfig();
 
-  const { logLevel } = configLoader.useConfig();
-  logger.logLevel = logLevel;
-  logger.showInfo();
+  const config = configLoader.useConfig();
+  logger.logLevel = config.logLevel;
+  logger.showInfo(config);
 
   const manifestLoader = container.get<ManifestLoader>(TYPES.ManifestLoader);
   // Load the manifest from project.
@@ -45,19 +44,20 @@ export async function dev() {
   const manifestFactory = container.get<ManifestFactory>(TYPES.ManifestFactory);
   const watcher = container.get<Watcher>(TYPES.Watcher);
   const bundler = container.get<CrxmBundler>(TYPES.CrxmBundler);
-  const distributior = container.get<Distributior>(TYPES.Distributior);
+
+  const outputter = container.get<I_OutputBundledService>(TYPES.OutputBundledService);
+
   const registerer = container.get<BundlerRegisterer>(TYPES.BundlerRegisterer);
   const userscriptRegisterer = container.get<UserscriptRegisterer>(TYPES.UserscriptRegisterer);
   const userscriptHeaderFactory = container.get<UserscriptHeaderFactory>(
     TYPES.UserscriptHeaderFactory,
   );
-  const userscriptBundler = container.get<UserscriptBundler>(TYPES.UserscriptBundler);
+  const userscriptBundler = container.get<I_UserscriptBundler>(TYPES.UserscriptBundler);
   const sockServer = container.get<SockServer>(TYPES.SockServer);
   const hmr = container.get<I_HMR>(TYPES.Hmr);
-  const createDevClient = container.get<CreateDevClient>(TYPES.CreateDevClient);
   const fileServer = container.get<FileServer>(TYPES.FileServer);
 
-  await distributior.cleanupDist();
+  await outputter.cleanupDist();
 
   const i18n = container.get<I_I18n>(TYPES.I18n);
 
@@ -70,40 +70,36 @@ export async function dev() {
   hmr.setup();
 
   // Register all build targets for bundler from manifest.
-  await registerer.registerAll();
+  outputter.setDefines(await registerer.registerAll());
 
   userscriptBundler.initialize();
   await userscriptRegisterer.sync();
 
-  createDevClient.outputDevExtension();
-
   // Bundle
   await bundler.watch();
   // Output bundled file to dist
-  await distributior.distAll();
+  await outputter.outputAll();
 
   // On updated manifest or config
   watcher.addListener(async () => {
-    const { logLevel } = configLoader.useConfig();
-    logger.logLevel = logLevel;
-    logger.showInfo();
+    const config = configLoader.useConfig();
+    logger.logLevel = config.logLevel;
+    logger.showInfo(config);
 
     // Reload manifest from loader
     manifestFactory.initialize();
     // Register all build targets for bundler from manifest.
-    registerer.registerAll();
+    outputter.setDefines(await registerer.registerAll());
 
     userscriptBundler.initialize();
     userscriptHeaderFactory.initialize();
     await userscriptRegisterer.sync();
 
-    createDevClient.outputDevExtension();
-
     // Bundle
     await bundler.stopWatch();
     await bundler.watch();
     // Output bundled file to dist
-    await distributior.distAll();
+    await outputter.outputAll();
 
     await fileServer.dispose();
     await fileServer.start();
@@ -113,22 +109,22 @@ export async function dev() {
 
   // On updated script
   bundler.addListener(async (target) => {
-    await distributior.dist(target.entryPoint, 'userjs');
+    await outputter.outputUserjs();
 
     if (target.flag === 'content') {
-      await distributior.dist(target.entryPoint, target.flag);
+      await outputter.outputContentScript(target.entryPoint);
       sockServer.reload('RELOAD_CONTENT_SCRIPT');
     } else if (target.flag === 'sw') {
-      await distributior.dist(target.entryPoint, target.flag);
+      await outputter.outputServiceWorker(target.entryPoint);
       sockServer.reload('RELOAD_SW');
     } else if (target.flag === 'css') {
-      await distributior.dist(target.entryPoint, target.flag);
+      await outputter.outputCss(target.entryPoint);
       sockServer.reload('RELOAD_CSS');
     } else if (target.flag === 'html_script') {
-      await distributior.dist(target.entryPoint, 'popup');
+      await outputter.outputPopup(target.entryPoint);
       sockServer.reload('RELOAD_POPUP_JS');
     } else if (target.flag === 'html' || target.flag === 'html_href') {
-      await distributior.dist(target.entryPoint, 'popup');
+      await outputter.outputPopup(target.entryPoint);
       sockServer.reload('RELOAD_POPUP_HTML');
     } else {
       sockServer.reload('ALL');

@@ -5,9 +5,8 @@ import { ManifestParser } from './manifest/ManifestParser';
 import { ConfigLoader } from './ConfigLoader';
 import { CrxmBundler } from './CrxmBundler';
 import chalk from 'chalk';
-import { Logger } from './Logger';
-import { Distributior } from './Distributior';
-import { Popup } from './popup/Popup';
+import type { I_Logger } from './Logger';
+import type { I_Popup } from './popup/Popup';
 import { CrxmBundlerPlugin, CrxmBundlerPluginWatch, FilePath } from './typeDefs';
 
 export interface I_BundlerRegisterer {}
@@ -24,9 +23,8 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     @inject(TYPES.ManifestParser) private readonly manifestParser: ManifestParser,
     @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
     @inject(TYPES.CrxmBundler) private readonly bundler: CrxmBundler,
-    @inject(TYPES.Logger) private readonly logger: Logger,
-    @inject(TYPES.Popup) private readonly popup: Popup,
-    @inject(TYPES.Distributior) private readonly distributior: Distributior,
+    @inject(TYPES.Logger) private readonly logger: I_Logger,
+    @inject(TYPES.Popup) private readonly popup: I_Popup,
   ) {}
 
   /**
@@ -81,8 +79,6 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
       }
     }
 
-    this.defineAllVars();
-
     /**
      * popup
      */
@@ -95,31 +91,13 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     fileChangeResult.html.removed.forEach(async (htmlEntry) => {
       this.popup.remove(htmlEntry);
     });
-  }
 
-  /**
-   * Load and register variables written in a conifg add to the bundled code
-   */
-  private defineAllVars() {
     const { define } = this.configLoader.useConfig();
-
-    if (define.contentscripts !== undefined) {
-      Object.entries(define.contentscripts).forEach(([name, value]) => {
-        this.distributior.addDefine(name, value, 'content');
-      });
-    }
-
-    if (define.sw !== undefined) {
-      Object.entries(define.sw).forEach(([name, value]) => {
-        this.distributior.addDefine(name, value, 'sw');
-      });
-    }
-
-    if (define.popup !== undefined) {
-      Object.entries(define.popup).forEach(([name, value]) => {
-        this.distributior.addDefine(name, value, 'popup');
-      });
-    }
+    return {
+      content: Object.entries(define.contentscripts ?? {}).map(([name, value]) => ({ name, value })),
+      sw: Object.entries(define.sw ?? {}).map(([name, value]) => ({ name, value })),
+      popup: Object.entries(define.popup ?? {}).map(([name, value]) => ({ name, value })),
+    } satisfies Defines;
   }
 
   private getAppropriatePlugin<T extends 'watch' | 'build'>(
@@ -286,3 +264,9 @@ export class BundlerRegisterer implements I_BundlerRegisterer {
     };
   }
 }
+
+export interface Define {
+  name: string;
+  value: string;
+}
+export type Defines = Record<'content' | 'sw' | 'popup', Define[]>;

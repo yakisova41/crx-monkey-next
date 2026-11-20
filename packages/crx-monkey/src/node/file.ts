@@ -42,3 +42,10 @@ export function absoluteGuard(filePath: string | FilePath) {
 
   return filePath as FilePath<'absolute'>;
 }
+
+export function toAbsolute(filePath: FilePath | string) {
+  if (!path.isAbsolute(filePath)) {
+    return path.resolve(filePath) as FilePath<'absolute'>;
+  }
+  return filePath as FilePath<'absolute'>;
+}

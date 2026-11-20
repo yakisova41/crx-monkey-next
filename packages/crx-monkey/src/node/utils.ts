@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { container } from './inversify.config';
-import { Logger } from './Logger';
+import type { I_Logger } from './Logger';
 import { TYPES } from './types';
 
 /**
@@ -8,7 +8,7 @@ import { TYPES } from './types';
  * @param e
  */
 export function errorHandler(e: Error) {
-  const logger = container.get<Logger>(TYPES.Logger); /*
+  const logger = container.get<I_Logger>(TYPES.Logger); /*
   dispatchErr(`${chalk.bgRed(` CRXM ${e.name} `)} ${chalk.bold(e.message)}`);
 
   const stack = e.stack?.split('\n');
