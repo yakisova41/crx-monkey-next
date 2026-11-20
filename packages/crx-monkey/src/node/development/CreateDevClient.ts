@@ -13,7 +13,7 @@ import type { I_ManifestParser } from '../manifest/ManifestParser';
 import { stringifyFunction } from '../utils';
 
 @injectable()
-export class CreateDevClient {
+export class CreateDevClient implements I_CreateDevClient {
   constructor(
     @inject(TYPES.ConfigLoader) private readonly configLoader: ConfigLoader,
     @inject(TYPES.CrxmBundler) private readonly bundler: CrxmBundler,
@@ -113,4 +113,10 @@ export class CreateDevClient {
       );
     }
   }
+}
+
+export interface I_CreateDevClient {
+  outputDevelomentSw(code: string): string;
+  outputDevelopmentUserjs(): string;
+  outputDevExtension(destination?: string): void;
 }

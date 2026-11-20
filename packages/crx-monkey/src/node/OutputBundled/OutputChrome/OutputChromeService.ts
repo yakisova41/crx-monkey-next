@@ -12,7 +12,7 @@ import type { I_ManifestParser } from '../../manifest/ManifestParser';
 import type { I_ManifestFactory } from '../../manifest/ManifestFactory';
 import type { I_Logger } from '../../Logger';
 import chalk from 'chalk';
-import { CreateDevClient } from '../../development/CreateDevClient';
+import type { I_CreateDevClient } from '../../development/CreateDevClient';
 import { isolatedConnector } from '../../isolatedConnector';
 import { stringifyFunction } from '../../utils';
 
@@ -28,7 +28,7 @@ export class OutputChromeService implements I_OutputChromeService {
     @inject(TYPES.ManifestFactory) private readonly manifestFactory: I_ManifestFactory,
     @inject(TYPES.Logger) private readonly logger: I_Logger,
     @inject(TYPES.Popup) private readonly popup: I_Popup,
-    @inject(TYPES.CreateDevClient) private readonly createDevClient: CreateDevClient,
+    @inject(TYPES.CreateDevClient) private readonly createDevClient: I_CreateDevClient,
     @inject(TYPES.IsWatch) private readonly isWatch: boolean,
   ) {}
 

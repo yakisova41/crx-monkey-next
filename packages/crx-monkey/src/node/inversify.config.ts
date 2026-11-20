@@ -13,7 +13,7 @@ import { UserscriptHeaderFactory } from './userscript/UserscriptHeader';
 import { UserscriptRegisterer } from './userscript/UserscriptRegisterer';
 import { Logger, type I_Logger } from './Logger';
 import { SockServer } from './server/SockServer';
-import { CreateDevClient } from './development/CreateDevClient';
+import { CreateDevClient, type I_CreateDevClient } from './development/CreateDevClient';
 import { FileServer } from './server/FileServer';
 import { Popup, type I_Popup } from './popup/Popup';
 import { HMR } from './Hmr';
@@ -79,7 +79,7 @@ container
   .to(UserscriptRegisterer)
   .inSingletonScope();
 container.bind<SockServer>(TYPES.SockServer).to(SockServer).inSingletonScope();
-container.bind<CreateDevClient>(TYPES.CreateDevClient).to(CreateDevClient).inSingletonScope();
+container.bind<I_CreateDevClient>(TYPES.CreateDevClient).to(CreateDevClient).inSingletonScope();
 container.bind<FileServer>(TYPES.FileServer).to(FileServer).inSingletonScope();
 container.bind<HMR>(TYPES.Hmr).to(HMR).inSingletonScope();
 /**
